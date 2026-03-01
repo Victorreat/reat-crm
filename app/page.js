@@ -2,42 +2,42 @@
 import { useUser, UserButton } from '@clerk/nextjs'
 import { useState, useEffect, useCallback } from 'react'
 
-// ─── Field IDs ────────────────────────────────────────────────────────────────
+// ─── Field Names (Airtable REST API returns field names not IDs) ───────────────
 const F = {
   props: {
-    addr:'fldPCfrAU7n0oyyqu', city:'fldC5OxARGAEBeeo2', state:'fldzL5iJWqMzgj6hx',
-    zip:'fldXyCqTHL9szxzBQ', market:'fldonvSd8NFuBRVtA', type:'flds5RRHGtVBM2gnS',
-    acreage:'fldZx4L6AwN9qiB4Q', sf:'fldxEZeQUh9R8cVH5', zoning:'fldGx2L3rcE2I0rLM',
-    status:'fldTlRXgmtBTYf9SU', tags:'fldm9HghT3q26ZMsv', entity:'fldd44KpKY8zultPw',
-    ownerName:'fldx08mwoq8PlrecC', ownerPhone:'fldTfuaHM8RSGTzMm', ownerEmail:'fld513363jvGHKNfP',
-    notes:'fldkJt6B4vkPUsnPn',
+    addr:'Address', city:'City', state:'State',
+    zip:'Zip', market:'Market', type:'Property Type',
+    acreage:'Acreage', sf:'Building SF', zoning:'Zoning',
+    status:'Prospecting Status', tags:'Tags', entity:'Ownership Entity',
+    ownerName:'Owner Name', ownerPhone:'Owner Phone', ownerEmail:'Owner Email',
+    notes:'Notes',
   },
   lists: {
-    name:'fld8iqpBelw9Ga29z', notes:'fldIBfgDFh9eE9Bx4', market:'fldXV8Vgk1SB9DYPZ',
-    status:'fldj0FrBEYuudrm3k', structure:'fld4F1sepqpzGj1TK', price:'fldyZ1V6jvD7AueJW',
-    rate:'fldAlQwOYkpo1qULd', commRate:'fld981Dc9dQuEB1X7', estComm:'fldGpI0TdDmJ16Hq3',
-    listDate:'fldVqn4mpiBXhK7Nu', expDate:'fldI3bOYe3MY0Kr5S', coBroker:'fld4MiP5z1m31N4Yh',
-    offer:'fldfEjBxKJytPBxMq', offerStatus:'fld35gfXh9RxbCyZn', buyerTenant:'fldIGGNa8jEtJzQJe',
-    prop:'fld8ZZESoDX9fmId8'
+    name:'Listing Name', notes:'Notes', market:'Market',
+    status:'Listing Status', structure:'Deal Structure', price:'Asking Price',
+    rate:'Asking Rate', commRate:'Commission Rate', estComm:'Est. Commission',
+    listDate:'Listing Date', expDate:'Expiration Date', coBroker:'Co-Broker',
+    offer:'Current Offer / LOI', offerStatus:'Offer Status', buyerTenant:'Buyer / Tenant',
+    prop:'Property'
   },
   deals: {
-    name:'fldfT39RPCAkMVoWf', notes:'fldseqQS6iLOv0Ln1', tenant:'fldD0aHHpZDVdXivp',
-    brokerage:'fldi82T8IbdLzYZg5', market:'fldcj07QCXsMaM7jH', stage:'fldwhxl7ZPFyYcyah',
-    structure:'fldlHCqxqYSaKJr8a', value:'fldQtiJ3mTx32oJ7j', commRate:'fldZZGuzFaMOL9IK8',
-    estComm:'fldhD4kHKqlfJH5xD', ca:'fldui3IgoNXjbVUIF', landlordEntity:'fldWDxomOKB32GyFx',
-    landlordContact:'fldAsb6cx4FQf3XTj', prop:'flduTpBjJwpdZpHS5', closeDate:'fldH0eM8Gc36FnijH',
-    linkedListing:'fld8IWlv8VHypXdkE'
+    name:'Deal Name', notes:'Notes', tenant:'Tenant / Client',
+    brokerage:'Brokerage', market:'Market', stage:'Deal Stage',
+    structure:'Deal Structure', value:'Deal Value', commRate:'Commission Rate',
+    estComm:'Est. Commission', ca:'Commission Agreement Executed', landlordEntity:'Landlord Entity',
+    landlordContact:'Landlord Contact', prop:'Property', closeDate:'Projected Close Date',
+    linkedListing:'Linked Listing'
   },
   conts: {
-    name:'fldJ4df8xFGOMTU1s', notes:'fldkUXgfLY31R91GT', company:'fldXtXH57OPkwiMc4',
-    role:'fldOeJ48TH3YxiarB', phone:'fldBOdWoi5uhLwVzy', email:'fldaIw5qDzyonfrzI',
-    linkedProp:'fldXIiQsMi57ADm2C', linkedListing:'fldgta3Kntbecc2I4', linkedDeal:'fldbqsE3I0H7ZbT2V'
+    name:'Name', notes:'Notes', company:'Company',
+    role:'Role', phone:'Phone', email:'Email',
+    linkedProp:'Linked Property', linkedListing:'Linked Listing', linkedDeal:'Linked Deal'
   },
   acts: {
-    desc:'fldQCJlcgD8e3X7Tb', notes:'fldHx1oRkZ8tiDD5N', date:'fldmKmuF5CbQ9vRVG',
-    type:'fldkHpFQGtwxlpLDt', outcome:'fldLjKDO8jLl1lb0B', fuDate:'fldKk7B9PaSrYP5YF',
-    fuAction:'fldX189YvmonY8sQ6', fuDone:'fldHJ9kC6zgItNooF', linkedProp:'fldcLAWrKEMTtnbPm',
-    linkedListing:'fldS58s3JVZO6x3XD', linkedDeal:'fldfddqdINnh78lcv', linkedContact:'fld7E7AgO6z2yoFqd'
+    desc:'Activity', notes:'Notes', date:'Date',
+    type:'Type', outcome:'Outcome', fuDate:'Follow-Up Date',
+    fuAction:'Follow-Up Action', fuDone:'Follow-Up Done', linkedProp:'Linked Property',
+    linkedListing:'Linked Listing', linkedDeal:'Linked Deal', linkedContact:'Linked Contact'
   }
 }
 
@@ -196,21 +196,21 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
     if (!name) return alert('Deal name required')
     setSaving(true)
     const fields = {
-      [F.deals.name]: name,
-      [F.deals.tenant]: tenant || undefined,
-      [F.deals.stage]: stage,
-      [F.deals.structure]: structure || undefined,
-      [F.deals.market]: market || undefined,
-      [F.deals.value]: dealValue || undefined,
-      [F.deals.commRate]: commRateN ? commRateN / 100 : undefined,
-      [F.deals.estComm]: estComm || undefined,
-      [F.deals.closeDate]: closeDate || undefined,
-      [F.deals.landlordEntity]: landlordEntity || undefined,
-      [F.deals.landlordContact]: landlordContact || undefined,
-      [F.deals.ca]: ca,
-      [F.deals.notes]: notes || undefined,
-      [F.deals.prop]: propId ? [{ id: propId }] : undefined,
-      [F.deals.linkedListing]: listId ? [{ id: listId }] : undefined,
+      'Deal Name': name,
+      'Tenant / Client': tenant || undefined,
+      'Deal Stage': stage,
+      'Deal Structure': structure || undefined,
+      'Market': market || undefined,
+      'Deal Value': dealValue || undefined,
+      'Commission Rate': commRateN ? commRateN / 100 : undefined,
+      'Est. Commission': estComm || undefined,
+      'Projected Close Date': closeDate || undefined,
+      'Landlord Entity': landlordEntity || undefined,
+      'Landlord Contact': landlordContact || undefined,
+      'Commission Agreement Executed': ca,
+      'Notes': notes || undefined,
+      'Property': propId ? [{ id: propId }] : undefined,
+      'Linked Listing': listId ? [{ id: listId }] : undefined,
     }
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
     if (editing) await apiUpdate('deals', data.id, clean)
@@ -312,7 +312,7 @@ function ListingForm({ data, props, onSave, onCancel }) {
   const handleSave = async () => {
     if (!name) return alert('Listing name required')
     setSaving(true)
-    const fields = { [F.lists.name]:name, [F.lists.structure]:structure||undefined, [F.lists.status]:status, [F.lists.price]:parseFloat(price)||undefined, [F.lists.commRate]:parseFloat(commRate)?parseFloat(commRate)/100:undefined, [F.lists.estComm]:estComm||undefined, [F.lists.listDate]:listDate||undefined, [F.lists.expDate]:expDate||undefined, [F.lists.coBroker]:coBroker||undefined, [F.lists.offer]:offer||undefined, [F.lists.offerStatus]:offerStatus||undefined, [F.lists.buyerTenant]:buyerTenant||undefined, [F.lists.notes]:notes||undefined, [F.lists.prop]:propId?[{id:propId}]:undefined }
+    const fields = { 'Listing Name':name, 'Deal Structure':structure||undefined, 'Listing Status':status, 'Asking Price':parseFloat(price)||undefined, 'Commission Rate':parseFloat(commRate)?parseFloat(commRate)/100:undefined, 'Est. Commission':estComm||undefined, 'Listing Date':listDate||undefined, 'Expiration Date':expDate||undefined, 'Co-Broker':coBroker||undefined, 'Current Offer / LOI':offer||undefined, 'Offer Status':offerStatus||undefined, 'Buyer / Tenant':buyerTenant||undefined, 'Notes':notes||undefined, 'Property':propId?[{id:propId}]:undefined }
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
     if (editing) await apiUpdate('lists', data.id, clean)
     else await apiCreate('lists', clean)
@@ -366,7 +366,7 @@ function ActivityForm({ props, deals, lists, onSave, onCancel, prefillDealId, pr
   const handleSave = async () => {
     if (!desc) return alert('Activity required')
     setSaving(true)
-    const fields = { [F.acts.desc]:desc, [F.acts.type]:type||undefined, [F.acts.date]:date, [F.acts.outcome]:outcome||undefined, [F.acts.fuDate]:fuDate||undefined, [F.acts.fuAction]:fuAction||undefined, [F.acts.notes]:notes||undefined, [F.acts.linkedProp]:propId?[{id:propId}]:undefined, [F.acts.linkedDeal]:dealId?[{id:dealId}]:undefined, [F.acts.linkedListing]:listId?[{id:listId}]:undefined }
+    const fields = { 'Activity':desc, 'Type':type||undefined, 'Date':date, 'Outcome':outcome||undefined, 'Follow-Up Date':fuDate||undefined, 'Follow-Up Action':fuAction||undefined, 'Notes':notes||undefined, 'Linked Property':propId?[{id:propId}]:undefined, 'Linked Deal':dealId?[{id:dealId}]:undefined, 'Linked Listing':listId?[{id:listId}]:undefined }
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
     await apiCreate('acts', clean)
     setSaving(false); onSave()
