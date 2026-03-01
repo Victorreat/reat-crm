@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REAT CRM</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  background: #f0f2f5;
+  color: #111;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app { display: flex; height: 100vh; }
+
+/* SIDEBAR */
+.sidebar {
+  width: 210px;
+  background: #1e2d40;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.logo {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.logo-main { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: 0.04em; }
+.logo-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+.nav { padding: 8px 0; flex: 1; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 18px;
+  color: rgba(255,255,255,0.6); font-size: 13.5px;
+  cursor: pointer; border-left: 3px solid transparent;
+  transition: all 0.12s; user-select: none;
+}
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.06); }
+.nav-item.active { color: #fff; border-left-color: #4a9eff; background: rgba(74,158,255,0.1); }
+
+.nav-count {
+  margin-left: auto; font-size: 11px;
+  color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.08);
+  padding: 1px 7px; border-radius: 10px;
+}
+.nav-item.active .nav-count { color: rgba(255,255,255,0.6); }
+
+.add-btn {
+  margin: 0 14px 18px;
+  background: #4a9eff; color: #fff; border: none;
+  border-radius: 7px; padding: 10px 14px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background 0.12s;
+}
+.add-btn:hover { background: #2b88ff; }
+
+/* MAIN */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.topbar {
+  background: #fff; border-bottom: 1px solid #e5e7eb;
+  padding: 0 24px; height: 52px;
+  display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+}
+
+.page-title { font-size: 15px; font-weight: 600; color: #111; }
+
+.search {
+  margin-left: auto;
+  background: #f3f4f6; border: 1px solid #e5e7eb;
+  border-radius: 6px; padding: 6px 12px;
+  font-size: 13px; width: 220px; outline: none; color: #111;
+}
+.search:focus { border-color: #4a9eff; background: #fff; }
+.search::placeholder { color: #9ca3af; }
+
+.content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+/* STATS */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+
+.stat {
+  background: #fff; border: 1px solid #e5e7eb;
+  border-radius: 8px; padding: 14px 16px;
+}
+.stat-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+.stat-value { font-size: 22px; font-weight: 700; color: #111; line-height: 1; }
+.stat-value.blue { color: #1d4ed8; }
+.stat-value.green { color: #16a34a; }
+.stat-value.orange { color: #d97706; }
+.stat-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+/* SECTION */
+.section { margin-bottom: 20px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.section-title { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.07em; }
+.view-all { font-size: 12px; color: #4a9eff; background: none; border: none; cursor: pointer; }
+.view-all:hover { color: #2b88ff; }
+
+/* TABLE */
+.tbl-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  padding: 9px 14px; text-align: left;
+  font-size: 11px; font-weight: 600; color: #6b7280;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  background: #f9fafb; border-bottom: 1px solid #e5e7eb;
+}
+tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.08s; cursor: pointer; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #f9fafb; }
+td { padding: 11px 14px; font-size: 13px; color: #111; vertical-align: middle; }
+.td-main { font-weight: 500; }
+.td-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.td-muted { color: #6b7280; }
+.td-mono { font-size: 12px; font-family: 'SF Mono', 'Fira Code', monospace; }
+
+/* BADGES */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.b-green { background: #dcfce7; color: #15803d; }
+.b-blue { background: #dbeafe; color: #1d4ed8; }
+.b-yellow { background: #fef9c3; color: #92400e; }
+.b-red { background: #fee2e2; color: #dc2626; }
+.b-gray { background: #f3f4f6; color: #6b7280; }
+.b-orange { background: #ffedd5; color: #c2410c; }
+
+/* OVERLAY */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  z-index: 100; display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.15s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+
+/* CHOOSER */
+.chooser {
+  background: #fff; border-radius: 10px; padding: 22px; width: 460px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  transform: translateY(6px); transition: transform 0.15s;
+}
+.overlay.open .chooser { transform: translateY(0); }
+.chooser-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.chooser-sub { font-size: 12px; color: #6b7280; margin-bottom: 18px; }
+.chooser-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.c-opt {
+  border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px;
+  cursor: pointer; transition: all 0.1s; background: #fff; text-align: left;
+}
+.c-opt:hover { border-color: #4a9eff; background: #f0f7ff; }
+.c-opt-label { font-size: 13px; font-weight: 600; color: #111; margin-bottom: 2px; }
+.c-opt-desc { font-size: 11px; color: #9ca3af; }
+
+/* FORM MODAL */
+.form-modal {
+  background: #fff; border-radius: 10px; padding: 24px; width: 500px;
+  max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  transform: translateY(6px); transition: transform 0.15s;
+}
+.overlay.open .form-modal { transform: translateY(0); }
+.form-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.form-title { font-size: 15px; font-weight: 700; }
+.close-btn {
+  width: 26px; height: 26px; border-radius: 5px;
+  background: #f3f4f6; border: none; cursor: pointer;
+  font-size: 16px; color: #6b7280;
+  display: flex; align-items: center; justify-content: center;
+}
+.close-btn:hover { background: #e5e7eb; color: #111; }
+
+.fg { margin-bottom: 14px; }
+.fl { display: block; font-size: 11px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+.fi, .fs, .fta {
+  width: 100%; background: #fff; border: 1px solid #d1d5db;
+  border-radius: 6px; padding: 8px 10px; font-size: 13px;
+  color: #111; outline: none; font-family: inherit; transition: border-color 0.1s;
+}
+.fi:focus, .fs:focus, .fta:focus { border-color: #4a9eff; }
+.fs option { background: #fff; }
+.fta { resize: vertical; min-height: 70px; }
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.form-actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid #f3f4f6;
+}
+.btn-cancel { background: #f3f4f6; border: none; border-radius: 6px; padding: 8px 16px; font-size: 13px; cursor: pointer; color: #374151; }
+.btn-cancel:hover { background: #e5e7eb; }
+.btn-save { background: #1d4ed8; border: none; border-radius: 6px; padding: 8px 20px; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; transition: background 0.1s; }
+.btn-save:hover { background: #1e40af; }
+.btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* PROP SEARCH */
+.ps-wrap { position: relative; }
+.ps-drop {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: #fff; border: 1px solid #d1d5db; border-radius: 7px;
+  z-index: 10; max-height: 190px; overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.ps-opt { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 0.08s; }
+.ps-opt:last-child { border-bottom: none; }
+.ps-opt:hover { background: #f0f7ff; }
+.ps-addr { font-size: 13px; font-weight: 500; }
+.ps-city { font-size: 11px; color: #9ca3af; }
+.ps-new { color: #1d4ed8; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 5px; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: #111; color: #fff; border-radius: 8px;
+  padding: 11px 16px; font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+  z-index: 200; transform: translateY(60px); opacity: 0;
+  transition: all 0.25s; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+.loading { display: flex; align-items: center; justify-content: center; padding: 48px; color: #9ca3af; gap: 10px; }
+.spinner { width: 16px; height: 16px; border: 2px solid #e5e7eb; border-top-color: #4a9eff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; padding: 32px; color: #9ca3af; font-size: 13px; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-main">REAT CRM</div>
+      <div class="logo-sub">Commercial Real Estate</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" data-view="dashboard" onclick="setView('dashboard',this)">⊞ Dashboard</div>
+      <div class="nav-item" data-view="properties" onclick="setView('properties',this)">⌂ Properties <span class="nav-count" id="nc-properties">—</span></div>
+      <div class="nav-item" data-view="listings" onclick="setView('listings',this)">◈ Listings <span class="nav-count" id="nc-listings">—</span></div>
+      <div class="nav-item" data-view="deals" onclick="setView('deals',this)">◇ Deals <span class="nav-count" id="nc-deals">—</span></div>
+      <div class="nav-item" data-view="contacts" onclick="setView('contacts',this)">◯ Contacts <span class="nav-count" id="nc-contacts">—</span></div>
+      <div class="nav-item" data-view="activities" onclick="setView('activities',this)">☰ Activities <span class="nav-count" id="nc-activities">—</span></div>
+    </nav>
+    <button class="add-btn" onclick="openChooser()">+ Quick Add</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="page-title" id="page-title">Dashboard</div>
+      <input class="search" placeholder="Search properties..." id="search-input" oninput="handleSearch(this.value)">
+    </div>
+    <div class="content" id="content">
+      <div class="loading"><div class="spinner"></div> Loading your CRM...</div>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="overlay" onclick="maybeClose(event)">
+  <div id="modal-inner"></div>
+</div>
+
+<div class="toast" id="toast">
+  <span id="t-icon">✓</span> <span id="t-msg"></span>
+</div>
+
+<script>
+const TOKEN = 'patkrll0qxgO9v46i.8b993bbb8365f62daf66480a82cc4fad90b7e2fbffa0e6a481b9860ebb93022f';
+const BASE  = 'appTiX16mitj5y9qb';
+
+const TBL = {
+  properties: 'tblwfNyQzKYx4HK0a',
+  listings:   'tblNsZAT6ASF5WBsk',
+  deals:      'tblQ76Ky1CK0oQTtI',
+  contacts:   'tblloysg41sLmT5yc',
+  activities: 'tbl9YuAGBHkJBITMK'
+};
+
+const F = {
+  p: { addr:'fldPCfrAU7n0oyyqu', city:'fldC5OxARGAEBeeo2', state:'fldzL5iJWqMzgj6hx', zip:'fldXyCqTHL9szxzBQ', market:'fldonvSd8NFuBRVtA', type:'flds5RRHGtVBM2gnS', acreage:'fldZx4L6AwN9qiB4Q', sf:'fldxEZeQUh9R8cVH5', status:'fldTlRXgmtBTYf9SU', tags:'fldm9HghT3q26ZMsv', entity:'fldd44KpKY8zultPw', ownerName:'fldx08mwoq8PlrecC', ownerPhone:'fldTfuaHM8RSGTzMm', ownerEmail:'fld513363jvGHKNfP', notes:'fldkJt6B4vkPUsnPn' },
+  l: { name:'fld8iqpBelw9Ga29z', property:'fld8ZZESoDX9fmId8', status:'fldj0FrBEYuudrm3k', structure:'fld4F1sepqpzGj1TK', askingPrice:'fldyZ1V6jvD7AueJW', commRate:'fld981Dc9dQuEB1X7', estComm:'fldGpI0TdDmJ16Hq3', offerStatus:'fld35gfXh9RxbCyZn', notes:'fldIBfgDFh9eE9Bx4' },
+  d: { name:'fldfT39RPCAkMVoWf', property:'flduTpBjJwpdZpHS5', tenant:'fldD0aHHpZDVdXivp', brokerage:'fldi82T8IbdLzYZg5', market:'fldcj07QCXsMaM7jH', stage:'fldwhxl7ZPFyYcyah', structure:'fldlHCqxqYSaKJr8a', dealValue:'fldQtiJ3mTx32oJ7j', commRate:'fldZZGuzFaMOL9IK8', estComm:'fldhD4kHKqlfJH5xD', caExec:'fldui3IgoNXjbVUIF', notes:'fldseqQS6iLOv0Ln1' },
+  c: { name:'fldJ4df8xFGOMTU1s', company:'fldXtXH57OPkwiMc4', role:'fldOeJ48TH3YxiarB', phone:'fldBOdWoi5uhLwVzy', email:'fldaIw5qDzyonfrzI', confirmed:'fldEIG2sF8YuC7rg4', linkedProp:'fldXIiQsMi57ADm2C', notes:'fldkUXgfLY31R91GT' },
+  a: { activity:'fldQCJlcgD8e3X7Tb', date:'fldmKmuF5CbQ9vRVG', type:'fldkHpFQGtwxlpLDt', linkedProp:'fldcLAWrKEMTtnbPm', outcome:'fldLjKDO8jLl1lb0B', followUpDate:'fldKk7B9PaSrYP5YF', followUpAction:'fldX189YvmonY8sQ6', followUpDone:'fldHJ9kC6zgItNooF', notes:'fldHx1oRkZ8tiDD5N' }
+};
+
+let S = { view:'dashboard', properties:[], listings:[], deals:[], contacts:[], activities:[] };
+
+async function get(table) {
+  const res = await fetch(`https://api.airtable.com/v0/${BASE}/${table}?maxRecords=500`, {
+    headers: { Authorization: `Bearer ${TOKEN}` }
+  });
+  const d = await res.json();
+  return d.records || [];
+}
+
+async function post(table, fields) {
+  const res = await fetch(`https://api.airtable.com/v0/${BASE}/${table}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields })
+  });
+  return res.json();
+}
+
+async function loadAll() {
+  const [p, l, d, c, a] = await Promise.all([
+    get(TBL.properties), get(TBL.listings), get(TBL.deals), get(TBL.contacts), get(TBL.activities)
+  ]);
+  S.properties = p.filter(r => r.fields[F.p.addr]);
+  S.listings   = l.filter(r => r.fields[F.l.name]);
+  S.deals      = d.filter(r => r.fields[F.d.name]);
+  S.contacts   = c.filter(r => r.fields[F.c.name]);
+  S.activities = a.filter(r => r.fields[F.a.type] || r.fields[F.a.activity]);
+  ['properties','listings','deals','contacts','activities'].forEach(k => {
+    document.getElementById('nc-'+k).textContent = S[k].length;
+  });
+  render();
+}
+
+function setView(view, el) {
+  S.view = view;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-title').textContent = el.textContent.trim().replace(/[^\w\s]/gu,'').trim();
+  document.getElementById('search-input').value = '';
+  render();
+}
+
+function render() {
+  const c = document.getElementById('content');
+  const views = { dashboard:renderDash, properties:()=>renderProps(S.properties), listings:()=>renderListings(S.listings), deals:()=>renderDeals(S.deals), contacts:()=>renderContacts(S.contacts), activities:()=>renderActivities(S.activities) };
+  c.innerHTML = views[S.view]();
+}
+
+function stageBadge(s) {
+  if (!s) return '';
+  const m = { 'Executed':'b-green','Closed':'b-green','Lease Draft':'b-blue','Under Contract':'b-blue','Active':'b-blue','LOI Accepted':'b-blue','LOI Prepared':'b-yellow','LOI Submitted':'b-yellow','Offer Received':'b-yellow','Dead':'b-gray','Expired':'b-gray','Withdrawn':'b-gray','Target Identified':'b-gray','Outreach':'b-gray','New':'b-gray','Researching':'b-yellow','Outreach Attempted':'b-yellow','Contacted':'b-blue','None':'b-gray' };
+  return `<span class="badge ${m[s]||'b-gray'}">${s}</span>`;
+}
+
+function $$(n) { return n == null ? '—' : '$' + Number(n).toLocaleString(); }
+
+function renderDash() {
+  const active = S.deals.filter(d => !['Executed','Dead'].includes(d.fields[F.d.stage]));
+  const closed = S.deals.filter(d => d.fields[F.d.stage]==='Executed');
+  const pipeComm = active.reduce((s,d) => s+(d.fields[F.d.estComm]||0), 0);
+  const closedComm = closed.reduce((s,d) => s+(d.fields[F.d.estComm]||0), 0);
+  const activeListings = S.listings.filter(l => l.fields[F.l.status]==='Active');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const fueDue = S.activities.filter(a => {
+    const fd = a.fields[F.a.followUpDate];
+    return fd && !a.fields[F.a.followUpDone] && new Date(fd) <= new Date(today.getTime()+3*86400000);
+  });
+  const reatActive = active.filter(d => d.fields[F.d.brokerage]==='REAT');
+
+  return `
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Pipeline Commission</div><div class="stat-value blue">${$$(pipeComm)}</div><div class="stat-sub">${active.length} active deals</div></div>
+    <div class="stat"><div class="stat-label">Closed Commission</div><div class="stat-value green">${$$(closedComm)}</div><div class="stat-sub">${closed.length} executed</div></div>
+    <div class="stat"><div class="stat-label">Active Listings</div><div class="stat-value">${activeListings.length}</div><div class="stat-sub">Landlord rep</div></div>
+    <div class="stat"><div class="stat-label">Follow-Ups Due</div><div class="stat-value ${fueDue.length?'orange':''}">${fueDue.length}</div><div class="stat-sub">Next 3 days</div></div>
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">REAT Active Deals</div><button class="view-all" onclick="document.querySelector('[data-view=deals]').click()">View all →</button></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Deal</th><th>Tenant</th><th>Stage</th><th>Structure</th><th>Est. Commission</th><th>CA</th></tr></thead>
+      <tbody>${reatActive.length ? reatActive.slice(0,8).map(d => {
+        const f = d.fields;
+        return `<tr><td><div class="td-main">${f[F.d.name]}</div><div class="td-sub">${f[F.d.market]||''}</div></td><td class="td-muted">${f[F.d.tenant]||'—'}</td><td>${stageBadge(f[F.d.stage])}</td><td class="td-muted">${f[F.d.structure]||'—'}</td><td class="td-mono">${$$(f[F.d.estComm])}</td><td>${f[F.d.caExec]?'<span style="color:#16a34a;font-weight:600">✓</span>':'<span style="color:#d1d5db">—</span>'}</td></tr>`;
+      }).join('') : '<tr><td colspan="6" class="empty">No active REAT deals</td></tr>'}</tbody>
+    </table></div>
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">Active Listings</div><button class="view-all" onclick="document.querySelector('[data-view=listings]').click()">View all →</button></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Property</th><th>Structure</th><th>Asking Price</th><th>Status</th><th>Offer Status</th></tr></thead>
+      <tbody>${activeListings.length ? activeListings.slice(0,6).map(l => {
+        const f = l.fields;
+        return `<tr><td class="td-main">${f[F.l.name]||'—'}</td><td class="td-muted">${f[F.l.structure]||'—'}</td><td class="td-mono">${$$(f[F.l.askingPrice])}</td><td>${stageBadge(f[F.l.status])}</td><td>${stageBadge(f[F.l.offerStatus]||'None')}</td></tr>`;
+      }).join('') : '<tr><td colspan="5" class="empty">No active listings</td></tr>'}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function renderProps(props) {
+  return `<div class="section"><div class="section-head"><div class="section-title">${props.length} Properties</div></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Address</th><th>City</th><th>Type</th><th>Status</th><th>Tags</th><th>Acreage</th><th>SF</th></tr></thead>
+    <tbody>${props.length ? props.map(p => {
+      const f = p.fields;
+      const tags = (f[F.p.tags]||[]).slice(0,2);
+      return `<tr><td class="td-main">${f[F.p.addr]}</td><td class="td-muted">${f[F.p.city]||'—'}</td><td class="td-muted">${f[F.p.type]||'—'}</td><td>${stageBadge(f[F.p.status])}</td><td>${tags.map(t=>`<span class="badge b-blue" style="margin-right:3px;font-size:10px">${t}</span>`).join('')}</td><td class="td-muted">${f[F.p.acreage]?f[F.p.acreage]+' ac':'—'}</td><td class="td-muted">${f[F.p.sf]?Number(f[F.p.sf]).toLocaleString()+' sf':'—'}</td></tr>`;
+    }).join('') : '<tr><td colspan="7" class="empty">No properties</td></tr>'}</tbody>
+  </table></div></div>`;
+}
+
+function renderListings(listings) {
+  return `<div class="section"><div class="section-head"><div class="section-title">${listings.length} Listings</div></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Name</th><th>Structure</th><th>Asking Price</th><th>Status</th><th>Offer Status</th><th>Est. Commission</th></tr></thead>
+    <tbody>${listings.length ? listings.map(l => {
+      const f = l.fields;
+      return `<tr><td class="td-main">${f[F.l.name]||'—'}</td><td class="td-muted">${f[F.l.structure]||'—'}</td><td class="td-mono">${$$(f[F.l.askingPrice])}</td><td>${stageBadge(f[F.l.status])}</td><td>${stageBadge(f[F.l.offerStatus]||'None')}</td><td class="td-mono">${$$(f[F.l.estComm])}</td></tr>`;
+    }).join('') : '<tr><td colspan="6" class="empty">No listings</td></tr>'}</tbody>
+  </table></div></div>`;
+}
+
+function renderDeals(deals) {
+  const reat = deals.filter(d => d.fields[F.d.brokerage]==='REAT');
+  const anchor = deals.filter(d => d.fields[F.d.brokerage]==='Anchor');
+  return `
+  <div class="section"><div class="section-head"><div class="section-title">REAT Deals (${reat.length})</div></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Deal</th><th>Tenant</th><th>Stage</th><th>Structure</th><th>Deal Value</th><th>Est. Commission</th><th>CA</th></tr></thead>
+    <tbody>${reat.length ? reat.map(d => {
+      const f = d.fields;
+      return `<tr><td><div class="td-main">${f[F.d.name]}</div><div class="td-sub">${f[F.d.market]||''}</div></td><td class="td-muted">${f[F.d.tenant]||'—'}</td><td>${stageBadge(f[F.d.stage])}</td><td class="td-muted">${f[F.d.structure]||'—'}</td><td class="td-mono">${$$(f[F.d.dealValue])}</td><td class="td-mono">${$$(f[F.d.estComm])}</td><td>${f[F.d.caExec]?'<span style="color:#16a34a;font-weight:600">✓</span>':'<span style="color:#d1d5db">—</span>'}</td></tr>`;
+    }).join('') : '<tr><td colspan="7" class="empty">No REAT deals</td></tr>'}</tbody>
+  </table></div></div>
+  <div class="section" style="margin-top:20px"><div class="section-head"><div class="section-title">Anchor Deals (${anchor.length})</div><span class="badge b-red">Disputed / Unpaid</span></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Deal</th><th>Tenant</th><th>Stage</th><th>Notes</th></tr></thead>
+    <tbody>${anchor.length ? anchor.map(d => {
+      const f = d.fields;
+      return `<tr><td class="td-main">${f[F.d.name]}</td><td class="td-muted">${f[F.d.tenant]||'—'}</td><td>${stageBadge(f[F.d.stage])}</td><td style="color:#dc2626;font-size:12px">${(f[F.d.notes]||'').slice(0,60)}</td></tr>`;
+    }).join('') : '<tr><td colspan="4" class="empty">No Anchor deals</td></tr>'}</tbody>
+  </table></div></div>`;
+}
+
+function renderContacts(contacts) {
+  return `<div class="section"><div class="section-head"><div class="section-title">${contacts.length} Contacts</div></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Name</th><th>Company</th><th>Role</th><th>Phone</th><th>Email</th><th>Confirmed</th></tr></thead>
+    <tbody>${contacts.length ? contacts.map(c => {
+      const f = c.fields;
+      return `<tr><td class="td-main">${f[F.c.name]}</td><td class="td-muted">${f[F.c.company]||'—'}</td><td class="td-muted">${f[F.c.role]||'—'}</td><td class="td-mono">${f[F.c.phone]||'—'}</td><td style="font-size:12px;color:#6b7280">${f[F.c.email]||'—'}</td><td>${f[F.c.confirmed]?'<span style="color:#16a34a;font-weight:600">✓</span>':'—'}</td></tr>`;
+    }).join('') : '<tr><td colspan="6" class="empty">No contacts yet — use Quick Add</td></tr>'}</tbody>
+  </table></div></div>`;
+}
+
+function renderActivities(activities) {
+  const sorted = [...activities].sort((a,b) => (b.fields[F.a.date]||'').localeCompare(a.fields[F.a.date]||''));
+  const today = new Date(); today.setHours(0,0,0,0);
+  return `<div class="section"><div class="section-head"><div class="section-title">${activities.length} Activities</div></div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Date</th><th>Type</th><th>Activity / Outcome</th><th>Follow-Up</th><th>Done</th></tr></thead>
+    <tbody>${sorted.length ? sorted.slice(0,100).map(a => {
+      const f = a.fields;
+      const fu = f[F.a.followUpDate];
+      const overdue = fu && !f[F.a.followUpDone] && new Date(fu) < today;
+      return `<tr><td class="td-mono" style="color:#6b7280">${f[F.a.date]||'—'}</td><td>${f[F.a.type]?`<span class="badge b-blue">${f[F.a.type]}</span>`:''}</td><td><div>${f[F.a.activity]||''}</div>${f[F.a.outcome]?`<div class="td-sub">${f[F.a.outcome]}</div>`:''}</td><td style="font-size:12px;color:${overdue?'#dc2626':'#6b7280'}">${fu?fu+(f[F.a.followUpAction]?' · '+f[F.a.followUpAction]:''):'—'}</td><td>${f[F.a.followUpDone]?'<span style="color:#16a34a;font-weight:600">✓</span>':'—'}</td></tr>`;
+    }).join('') : '<tr><td colspan="5" class="empty">No activities logged yet</td></tr>'}</tbody>
+  </table></div></div>`;
+}
+
+function handleSearch(v) {
+  if (!v) { render(); return; }
+  v = v.toLowerCase();
+  const filtered = S.properties.filter(p => {
+    const f = p.fields;
+    return (f[F.p.addr]||'').toLowerCase().includes(v) || (f[F.p.city]||'').toLowerCase().includes(v) || (f[F.p.market]||'').toLowerCase().includes(v);
+  });
+  document.getElementById('content').innerHTML = renderProps(filtered);
+}
+
+// MODALS
+function openChooser() {
+  document.getElementById('modal-inner').innerHTML = `
+  <div class="chooser">
+    <div class="chooser-title">Quick Add</div>
+    <div class="chooser-sub">What do you want to add?</div>
+    <div class="chooser-grid">
+      <div class="c-opt" onclick="openForm('activity')"><div class="c-opt-label">Log Activity</div><div class="c-opt-desc">Call, email, voicemail, note</div></div>
+      <div class="c-opt" onclick="openForm('property')"><div class="c-opt-label">New Property</div><div class="c-opt-desc">Add a site to your database</div></div>
+      <div class="c-opt" onclick="openForm('deal')"><div class="c-opt-label">New Deal</div><div class="c-opt-desc">Tenant rep pursuit</div></div>
+      <div class="c-opt" onclick="openForm('listing')"><div class="c-opt-label">New Listing</div><div class="c-opt-desc">Landlord rep engagement</div></div>
+      <div class="c-opt" onclick="openForm('contact')"><div class="c-opt-label">New Contact</div><div class="c-opt-desc">Owner, broker, client</div></div>
+    </div>
+  </div>`;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+function maybeClose(e) { if (e.target===document.getElementById('overlay')) closeModal(); }
+
+function propSearchWidget() {
+  return `<div class="fg"><label class="fl">Property</label><div class="ps-wrap"><input class="fi" id="ps-input" placeholder="Search or type address..." autocomplete="off"><input type="hidden" id="ps-id"><div class="ps-drop" id="ps-drop" style="display:none"></div></div></div>`;
+}
+
+function initPropSearch() {
+  const inp = document.getElementById('ps-input');
+  const drop = document.getElementById('ps-drop');
+  if (!inp) return;
+  inp.addEventListener('input', () => {
+    const v = inp.value.toLowerCase().trim();
+    if (!v) { drop.style.display='none'; return; }
+    const hits = S.properties.filter(p => (p.fields[F.p.addr]||'').toLowerCase().includes(v) || (p.fields[F.p.city]||'').toLowerCase().includes(v)).slice(0,8);
+    let html = hits.map(p => `<div class="ps-opt" onclick="pickProp('${p.id}','${(p.fields[F.p.addr]||'').replace(/'/g,"\\'")}')"><div class="ps-addr">${p.fields[F.p.addr]}</div><div class="ps-city">${p.fields[F.p.city]||''}</div></div>`).join('');
+    html += `<div class="ps-opt" onclick="createPropInline()"><div class="ps-new">＋ Create "${inp.value}"</div></div>`;
+    drop.innerHTML = html;
+    drop.style.display = 'block';
+  });
+  inp.addEventListener('blur', () => setTimeout(() => drop.style.display='none', 180));
+}
+
+function pickProp(id, addr) {
+  document.getElementById('ps-input').value = addr;
+  document.getElementById('ps-id').value = id;
+  document.getElementById('ps-drop').style.display = 'none';
+}
+
+async function createPropInline() {
+  const addr = document.getElementById('ps-input').value;
+  if (!addr) return;
+  toast('Creating property...', '⟳');
+  const r = await post(TBL.properties, { [F.p.addr]: addr, [F.p.status]: 'New' });
+  if (r.id) {
+    S.properties.push(r);
+    document.getElementById('nc-properties').textContent = S.properties.length;
+    pickProp(r.id, addr);
+    toast('Property created: '+addr);
+  }
+}
+
+function openForm(type) {
+  const forms = { activity:actForm, property:propForm, deal:dealForm, listing:listForm, contact:contForm };
+  document.getElementById('modal-inner').innerHTML = forms[type]();
+  initPropSearch();
+}
+
+function mw(title, body) {
+  return `<div class="form-modal"><div class="form-head"><div class="form-title">${title}</div><button class="close-btn" onclick="closeModal()">×</button></div>${body}</div>`;
+}
+
+function actForm() {
+  const today = new Date().toISOString().split('T')[0];
+  return mw('Log Activity', `
+    ${propSearchWidget()}
+    <div class="frow">
+      <div class="fg"><label class="fl">Date *</label><input class="fi" type="date" id="a-date" value="${today}"></div>
+      <div class="fg"><label class="fl">Type *</label><select class="fs" id="a-type"><option value="">Select...</option><option>Call</option><option>Voicemail</option><option>Email</option><option>Text</option><option>Meeting</option><option>Tour</option><option>Research</option><option>Note</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Outcome / Note</label><input class="fi" id="a-outcome" placeholder="What happened?"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Follow-Up Date</label><input class="fi" type="date" id="a-fudate"></div>
+      <div class="fg"><label class="fl">Follow-Up Action</label><input class="fi" id="a-fuaction" placeholder="Call back, send LOI..."></div>
+    </div>
+    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="a-notes"></textarea></div>
+    <div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" id="save-btn" onclick="saveActivity()">Save Activity</button></div>`);
+}
+
+function propForm() {
+  return mw('New Property', `
+    <div class="fg"><label class="fl">Address *</label><input class="fi" id="p-addr"></div>
+    <div class="frow"><div class="fg"><label class="fl">City</label><input class="fi" id="p-city"></div><div class="fg"><label class="fl">Zip</label><input class="fi" id="p-zip"></div></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Type</label><select class="fs" id="p-type"><option value="">Select...</option><option>Freestanding</option><option>Pad / Out Parcel</option><option>Inline</option><option>End Cap</option><option>Strip Center</option><option>Vacant Land</option><option>Mixed-Use</option><option>Multifamily</option><option>Build to Suit</option><option>Other</option></select></div>
+      <div class="fg"><label class="fl">Status</label><select class="fs" id="p-status"><option>New</option><option>Researching</option><option>Outreach Attempted</option><option>Contacted</option><option>Active</option><option>Dead</option></select></div>
+    </div>
+    <div class="fg"><label class="fl">Tag</label><select class="fs" id="p-tag"><option value="">None</option><option>7 Brew Target</option><option>Cricket Target</option><option>Portillo's Target</option><option>Potential Listing</option><option>Dual Agency</option><option>Ground Lease Candidate</option><option>Drive-Thru Required</option><option>Hunch</option></select></div>
+    <div class="frow"><div class="fg"><label class="fl">Acreage</label><input class="fi" type="number" step="0.01" id="p-ac"></div><div class="fg"><label class="fl">Building SF</label><input class="fi" type="number" id="p-sf"></div></div>
+    <div class="fg"><label class="fl">Ownership Entity</label><input class="fi" id="p-entity"></div>
+    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="p-notes"></textarea></div>
+    <div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" id="save-btn" onclick="saveProperty()">Save Property</button></div>`);
+}
+
+function dealForm() {
+  return mw('New Deal', `
+    ${propSearchWidget()}
+    <div class="fg"><label class="fl">Deal Name *</label><input class="fi" id="d-name" placeholder="e.g. 7 Brew – Medina"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Tenant / Client</label><select class="fs" id="d-tenant"><option value="">Select...</option><option>7 Brew</option><option>Cricket Wireless</option><option>Portillo's</option><option>Biggby Coffee</option><option>Other</option></select></div>
+      <div class="fg"><label class="fl">Brokerage</label><select class="fs" id="d-brokerage"><option>REAT</option><option>Anchor</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Stage</label><select class="fs" id="d-stage"><option>Target Identified</option><option>Outreach</option><option>LOI Prepared</option><option>LOI Submitted</option><option>LOI Accepted</option><option>Lease Draft</option><option>Executed</option><option>Dead</option></select></div>
+      <div class="fg"><label class="fl">Structure</label><select class="fs" id="d-structure"><option value="">Select...</option><option>Purchase</option><option>Ground Lease</option><option>Lease</option></select></div>
+    </div>
+    <div class="frow"><div class="fg"><label class="fl">Deal Value $</label><input class="fi" type="number" id="d-value"></div><div class="fg"><label class="fl">Commission Rate %</label><input class="fi" type="number" step="0.1" id="d-commrate"></div></div>
+    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="d-notes"></textarea></div>
+    <div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" id="save-btn" onclick="saveDeal()">Save Deal</button></div>`);
+}
+
+function listForm() {
+  return mw('New Listing', `
+    ${propSearchWidget()}
+    <div class="fg"><label class="fl">Listing Name *</label><input class="fi" id="l-name" placeholder="e.g. 960 N Leavitt Rd – Amherst"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Structure</label><select class="fs" id="l-structure"><option value="">Select...</option><option>Sale</option><option>Lease</option><option>Ground Lease</option><option>Build to Suit</option><option>Sale or Lease</option><option>Sale or Ground Lease</option></select></div>
+      <div class="fg"><label class="fl">Status</label><select class="fs" id="l-status"><option>Active</option><option>Offer Received</option><option>Under Contract</option><option>Closed</option><option>Expired</option><option>Withdrawn</option></select></div>
+    </div>
+    <div class="frow"><div class="fg"><label class="fl">Asking Price $</label><input class="fi" type="number" id="l-price"></div><div class="fg"><label class="fl">Commission Rate %</label><input class="fi" type="number" step="0.1" id="l-commrate"></div></div>
+    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="l-notes"></textarea></div>
+    <div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" id="save-btn" onclick="saveListing()">Save Listing</button></div>`);
+}
+
+function contForm() {
+  return mw('New Contact', `
+    <div class="fg"><label class="fl">Name *</label><input class="fi" id="c-name"></div>
+    <div class="frow"><div class="fg"><label class="fl">Company / Entity</label><input class="fi" id="c-company"></div><div class="fg"><label class="fl">Role</label><select class="fs" id="c-role"><option value="">Select...</option><option>Owner</option><option>Owner Rep</option><option>Listing Broker</option><option>Buyer Broker</option><option>Tenant</option><option>Tenant Rep</option><option>Attorney</option><option>Developer</option><option>Property Manager</option><option>Other</option></select></div></div>
+    <div class="frow"><div class="fg"><label class="fl">Phone</label><input class="fi" type="tel" id="c-phone"></div><div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="c-email"></div></div>
+    ${propSearchWidget()}
+    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="c-notes"></textarea></div>
+    <div class="form-actions"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" id="save-btn" onclick="saveContact()">Save Contact</button></div>`);
+}
+
+function saving() { const b = document.getElementById('save-btn'); b.disabled=true; b.textContent='Saving...'; }
+function val(id) { const el=document.getElementById(id); return el?el.value.trim():''; }
+function num(id) { const v=parseFloat(val(id)); return isNaN(v)?undefined:v; }
+function clean(obj) { Object.keys(obj).forEach(k=>(obj[k]===undefined||obj[k]==='')&&delete obj[k]); return obj; }
+
+async function saveActivity() {
+  if (!val('a-type')) { toast('Select an activity type','!'); return; }
+  saving();
+  const propId = val('ps-id');
+  const r = await post(TBL.activities, clean({ [F.a.activity]:val('a-type')+(val('a-outcome')?': '+val('a-outcome'):''), [F.a.type]:val('a-type'), [F.a.date]:val('a-date')||undefined, [F.a.outcome]:val('a-outcome')||undefined, [F.a.followUpDate]:val('a-fudate')||undefined, [F.a.followUpAction]:val('a-fuaction')||undefined, [F.a.notes]:val('a-notes')||undefined, [F.a.linkedProp]:propId?[propId]:undefined }));
+  if (r.id) { S.activities.unshift(r); document.getElementById('nc-activities').textContent=S.activities.length; closeModal(); toast('Activity logged'); if(['activities','dashboard'].includes(S.view)) render(); } else toast('Error saving','!');
+}
+
+async function saveProperty() {
+  if (!val('p-addr')) { toast('Address required','!'); return; }
+  saving();
+  const tag = val('p-tag');
+  const r = await post(TBL.properties, clean({ [F.p.addr]:val('p-addr'), [F.p.city]:val('p-city')||undefined, [F.p.zip]:val('p-zip')||undefined, [F.p.type]:val('p-type')||undefined, [F.p.status]:val('p-status'), [F.p.tags]:tag?[tag]:undefined, [F.p.acreage]:num('p-ac'), [F.p.sf]:num('p-sf'), [F.p.entity]:val('p-entity')||undefined, [F.p.notes]:val('p-notes')||undefined }));
+  if (r.id) { S.properties.push(r); document.getElementById('nc-properties').textContent=S.properties.length; closeModal(); toast('Property added'); if(['properties','dashboard'].includes(S.view)) render(); } else toast('Error saving','!');
+}
+
+async function saveDeal() {
+  if (!val('d-name')) { toast('Deal name required','!'); return; }
+  saving();
+  const propId=val('ps-id'), dv=num('d-value'), cr=num('d-commrate');
+  const r = await post(TBL.deals, clean({ [F.d.name]:val('d-name'), [F.d.property]:propId?[propId]:undefined, [F.d.tenant]:val('d-tenant')||undefined, [F.d.brokerage]:val('d-brokerage'), [F.d.stage]:val('d-stage'), [F.d.structure]:val('d-structure')||undefined, [F.d.dealValue]:dv, [F.d.commRate]:cr?cr/100:undefined, [F.d.estComm]:(dv&&cr)?dv*(cr/100):undefined, [F.d.notes]:val('d-notes')||undefined }));
+  if (r.id) { S.deals.push(r); document.getElementById('nc-deals').textContent=S.deals.length; closeModal(); toast('Deal added'); if(['deals','dashboard'].includes(S.view)) render(); } else toast('Error saving','!');
+}
+
+async function saveListing() {
+  if (!val('l-name')) { toast('Name required','!'); return; }
+  saving();
+  const propId=val('ps-id'), cr=num('l-commrate');
+  const r = await post(TBL.listings, clean({ [F.l.name]:val('l-name'), [F.l.property]:propId?[propId]:undefined, [F.l.structure]:val('l-structure')||undefined, [F.l.status]:val('l-status'), [F.l.askingPrice]:num('l-price'), [F.l.commRate]:cr?cr/100:undefined, [F.l.notes]:val('l-notes')||undefined }));
+  if (r.id) { S.listings.push(r); document.getElementById('nc-listings').textContent=S.listings.length; closeModal(); toast('Listing added'); if(['listings','dashboard'].includes(S.view)) render(); } else toast('Error saving','!');
+}
+
+async function saveContact() {
+  if (!val('c-name')) { toast('Name required','!'); return; }
+  saving();
+  const propId=val('ps-id');
+  const r = await post(TBL.contacts, clean({ [F.c.name]:val('c-name'), [F.c.company]:val('c-company')||undefined, [F.c.role]:val('c-role')||undefined, [F.c.phone]:val('c-phone')||undefined, [F.c.email]:val('c-email')||undefined, [F.c.linkedProp]:propId?[propId]:undefined, [F.c.notes]:val('c-notes')||undefined }));
+  if (r.id) { S.contacts.push(r); document.getElementById('nc-contacts').textContent=S.contacts.length; closeModal(); toast('Contact added'); if(S.view==='contacts') render(); } else toast('Error saving','!');
+}
+
+function toast(msg, icon='✓') {
+  const t=document.getElementById('toast');
+  document.getElementById('t-msg').textContent=msg;
+  document.getElementById('t-icon').textContent=icon;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+loadAll();
+</script>
+</body>
+</html>
