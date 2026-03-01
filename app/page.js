@@ -78,7 +78,9 @@ function Badge({ value }) {
 // ─── API calls ────────────────────────────────────────────────────────────────
 async function apiCreate(table, fields) {
   const res = await fetch('/api/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table, fields }) })
-  return res.json()
+  const json = await res.json()
+  if (json.error) throw new Error(json.error)
+  return json
 }
 async function apiUpdate(table, id, fields) {
   const res = await fetch('/api/records', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table, id, fields }) })
@@ -324,7 +326,23 @@ function ListingForm({ data, props, onSave, onCancel }) {
   const handleSave = async () => {
     if (!name) return alert('Listing name required')
     setSaving(true)
-    const fields = { 'Listing Name':name, 'Deal Structure':structure||undefined, 'Listing Status':status, 'Asking Price':parseFloat(price)||undefined, 'Commission Rate':parseFloat(commRate)?parseFloat(commRate)/100:undefined, 'Est. Commission':estComm||undefined, 'Listing Date':listDate||undefined, 'Expiration Date':expDate||undefined, 'Co-Broker':coBroker||undefined, 'Current Offer / LOI':offer||undefined, 'Offer Status':offerStatus||undefined, 'Buyer / Tenant':buyerTenant||undefined, 'Notes':notes||undefined, 'Property':propId?[{id:propId}]:undefined }
+    const fields = {
+      'Listing Name': name,
+      'Deal Structure': structure || undefined,
+      'Listing Status': status,
+      'Asking Price': parseFloat(price) || undefined,
+      'Commission Rate': parseFloat(commRate) ? parseFloat(commRate)/100 : undefined,
+      'Est. Commission': estComm || undefined,
+      'Listing Date': listDate || undefined,
+      'Expiration Date': expDate || undefined,
+      'Co-Broker': coBroker || undefined,
+      'Current Offer / LOI': offer || undefined,
+      'Offer Status': offerStatus || undefined,
+      'Buyer / Tenant': buyerTenant || undefined,
+      'Notes': notes || undefined,
+      ...(propId ? { 'Property': [{ id: propId }] } : {}),
+    }
+    console.log('Saving listing', data?.id, fields)
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
     try {
       if (editing) await apiUpdate('lists', data.id, clean)
@@ -946,7 +964,7 @@ export default function CRM() {
     { id: 'listings', label: 'Listings', count: lists.length },
     { id: 'deals', label: 'Deals', count: deals.length },
     { id: 'contacts', label: 'Contacts', count: conts.length },
-    { id: 'activities', label: 'Activities', count: acts.length },
+    { id: 'activities', label: 'Prospecting', count: acts.length },
     { id: 'calendar', label: 'Commission Cal.' },
   ]
 
@@ -1001,23 +1019,124 @@ export default function CRM() {
           {detail}
 
           {/* Dashboard */}
-          {!detail && view === 'dashboard' && (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '20px' }}>
-                <StatCard label="Active Pipeline" value={fmt$(activePipeline)} color="#316828" />
-                <StatCard label="Closed Commission" value={fmt$(closedComm)} color="#c69425" />
-                <StatCard label="Active Listings" value={activeListings} />
-                <StatCard label="Follow-Ups Due" value={fueDue} color={fueDue > 0 ? '#dc2626' : undefined} />
+          {!detail && view === 'dashboard' && (() => {
+            const now = new Date()
+            const activeDeals = deals.filter(d => !['Executed','Dead'].includes(fv(d.fields,F.deals.stage)))
+            
+            // Close date buckets
+            const bucket = (d) => {
+              const cd = fv(d.fields, F.deals.closeDate)
+              if (!cd) return 'unscheduled'
+              const days = Math.ceil((new Date(cd) - now) / 86400000)
+              if (days < 0) return 'overdue'
+              if (days <= 30) return '0-30'
+              if (days <= 60) return '31-60'
+              if (days <= 90) return '61-90'
+              if (days <= 120) return '91-120'
+              if (days <= 180) return '121-180'
+              return '180+'
+            }
+            const buckets = { 'overdue':[], '0-30':[], '31-60':[], '61-90':[], '91-120':[], '121-180':[], '180+':[], 'unscheduled':[] }
+            activeDeals.forEach(d => buckets[bucket(d)].push(d))
+            
+            const BUCKET_LABELS = [
+              { key:'overdue', label:'Overdue', color:'#dc2626', bg:'#fee2e2' },
+              { key:'0-30', label:'0–30 Days', color:'#c69425', bg:'#fef9c3' },
+              { key:'31-60', label:'31–60 Days', color:'#316828', bg:'#e8f0e9' },
+              { key:'61-90', label:'61–90 Days', color:'#1d4ed8', bg:'#dbeafe' },
+              { key:'91-120', label:'91–120 Days', color:'#7c3aed', bg:'#ede9fe' },
+              { key:'121-180', label:'121–180 Days', color:'#6b7280', bg:'#f3f4f6' },
+              { key:'180+', label:'180+ Days', color:'#9ca3af', bg:'#f9fafb' },
+            ]
+            
+            const overdueFU = acts.filter(a => { const fd = a.fields[F.acts.fuDate]; return fd && !a.fields[F.acts.fuDone] && new Date(fd) <= now })
+            const todayFU = acts.filter(a => { const fd = a.fields[F.acts.fuDate]; if (!fd || a.fields[F.acts.fuDone]) return false; const d = new Date(fd); const t = new Date(); return d.toDateString() === t.toDateString() })
+
+            return (
+              <div>
+                {/* KPI Bar */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'12px', marginBottom:'20px' }}>
+                  <StatCard label="Active Pipeline" value={fmt$(activePipeline)} color="#316828" />
+                  <StatCard label="YTD Closed Comm." value={fmt$(closedComm)} color="#c69425" />
+                  <StatCard label="Active Listings" value={activeListings} />
+                  <StatCard label="Follow-Ups Due" value={overdueFU.length} color={overdueFU.length > 0 ? '#dc2626' : undefined} />
+                  <StatCard label="Active Deals" value={activeDeals.length} />
+                </div>
+
+                {/* Pipeline by close date */}
+                <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px' }}>Pipeline by Close Date</div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', marginBottom:'20px' }}>
+                  {BUCKET_LABELS.map(b => {
+                    const bDeals = buckets[b.key]
+                    const bComm = bDeals.reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
+                    return (
+                      <div key={b.key} style={{ background:'#fff', border:`1px solid ${b.bg === '#fff' ? '#e2dcc8' : b.bg}`, borderLeft:`4px solid ${b.color}`, borderRadius:'8px', padding:'12px 14px' }}>
+                        <div style={{ fontSize:'11px', fontWeight:700, color:b.color, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'6px' }}>{b.label}</div>
+                        <div style={{ fontSize:'20px', fontWeight:700, color:'#1a1a1a', marginBottom:'4px' }}>{fmt$(bComm)}</div>
+                        <div style={{ fontSize:'12px', color:'#6b7280', marginBottom: bDeals.length ? '8px' : 0 }}>{bDeals.length} deal{bDeals.length !== 1 ? 's' : ''}</div>
+                        {bDeals.map(d => (
+                          <div key={d.id} onClick={() => { setView('deals'); setSelected(s => ({...s, deal:d})) }}
+                            style={{ fontSize:'12px', padding:'5px 7px', marginBottom:'3px', background:b.bg, borderRadius:'4px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                            <span style={{ fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'65%' }}>{fv(d.fields,F.deals.name)}</span>
+                            <span style={{ color:b.color, fontWeight:600, flexShrink:0 }}>{fmt$(d.fields[F.deals.estComm])}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                  {/* Unscheduled */}
+                  {buckets['unscheduled'].length > 0 && (
+                    <div style={{ background:'#fff', border:'1px solid #e2dcc8', borderLeft:'4px solid #d1d5db', borderRadius:'8px', padding:'12px 14px' }}>
+                      <div style={{ fontSize:'11px', fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'6px' }}>No Close Date</div>
+                      <div style={{ fontSize:'12px', color:'#6b7280', marginBottom:'8px' }}>{buckets['unscheduled'].length} deal{buckets['unscheduled'].length !== 1 ? 's' : ''}</div>
+                      {buckets['unscheduled'].map(d => (
+                        <div key={d.id} onClick={() => { setView('deals'); setSelected(s => ({...s, deal:d})) }}
+                          style={{ fontSize:'12px', padding:'5px 7px', marginBottom:'3px', background:'#f9fafb', borderRadius:'4px', cursor:'pointer' }}>
+                          <span style={{ fontWeight:500 }}>{fv(d.fields,F.deals.name)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Active Listings strip */}
+                <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px' }}>Active Listings</div>
+                <div style={{ ...card, marginBottom:'20px' }}>
+                  <table style={tbl}>
+                    <thead><tr><th style={th}>Listing</th><th style={th}>Structure</th><th style={th}>Asking Price</th><th style={th}>Status</th><th style={th}>Est. Commission</th></tr></thead>
+                    <tbody>{lists.filter(l => fv(l.fields,F.lists.status) === 'Active').map(l => (
+                      <tr key={l.id} style={{ cursor:'pointer' }} onClick={() => { setView('listings'); setSelected(s => ({...s, listing:l})) }}>
+                        <td style={td}><div style={{fontWeight:500}}>{fv(l.fields,F.lists.name)}</div></td>
+                        <td style={{...td,color:'#6b7280'}}>{fv(l.fields,F.lists.structure)}</td>
+                        <td style={td}>{fmt$(l.fields[F.lists.price])}</td>
+                        <td style={td}><Badge value={l.fields[F.lists.status]} /></td>
+                        <td style={{...td,color:'#c69425',fontWeight:600}}>{fmt$(l.fields[F.lists.estComm])}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+
+                {/* Follow-ups due today */}
+                {todayFU.length > 0 && (
+                  <div style={{ marginBottom:'20px' }}>
+                    <div style={{ fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px' }}>Follow-Ups Due Today ({todayFU.length})</div>
+                    <div style={card}>
+                      <table style={tbl}>
+                        <thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Date</th></tr></thead>
+                        <tbody>{todayFU.map(a => (
+                          <tr key={a.id}>
+                            <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)}</div></td>
+                            <td style={{...td,color:'#6b7280'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
+                            <td style={{...td,color:'#dc2626'}}>{fv(a.fields,F.acts.fuDate)}</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Recent Deals</div>
-              <div style={card}>
-                <table style={tbl}>
-                  <thead><tr><th style={th}>Deal</th><th style={th}>Tenant</th><th style={th}>Stage</th><th style={th}>Est. Commission</th><th style={th}>Close Date</th></tr></thead>
-                  <tbody>{[...deals].reverse().slice(0,8).map(d => <tr key={d.id} style={{ cursor: 'pointer' }} onClick={() => { setView('deals'); setSelected(s => ({...s, deal:d})) }}><td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)}</div></td><td style={td}>{fv(d.fields,F.deals.tenant)||'—'}</td><td style={td}><Badge value={d.fields[F.deals.stage]} /></td><td style={{...td,color:'#c69425',fontWeight:600}}>{fmt$(d.fields[F.deals.estComm])}</td><td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.closeDate)||'—'}</td></tr>)}</tbody>
-                </table>
-              </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Properties */}
           {!detail && view === 'properties' && (
