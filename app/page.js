@@ -45,12 +45,18 @@ const F = {
 const fmt$ = n => n ? '$' + Number(n).toLocaleString('en-US', {maximumFractionDigits:0}) : '—'
 const fv = (fields, key) => {
   const v = fields?.[key]
-  if (!v) return ''
-  if (Array.isArray(v)) return v.map(x => typeof x === 'object' ? x.name || x.id : x).join(', ')
+  if (v === null || v === undefined || v === '') return ''
+  if (Array.isArray(v)) return v.map(x => typeof x === 'object' ? (x.name || x.id) : String(x)).join(', ')
   if (typeof v === 'object' && v.name) return v.name
   return String(v)
 }
-const linked = (fields, key) => fields?.[key] || []
+// REST API returns linked records as array of record ID strings e.g. ["recXXX"]
+const linked = (fields, key) => {
+  const v = fields?.[key]
+  if (!v || !Array.isArray(v)) return []
+  // Normalize to array of {id} objects regardless of format
+  return v.map(x => typeof x === 'object' ? x : { id: x })
+}
 
 const STAGE_COLORS = {
   'Executed':'#dcfce7,#16a34a','Closed':'#dcfce7,#16a34a','LOI Accepted':'#dcfce7,#16a34a','Active':'#dbeafe,#1d4ed8',
