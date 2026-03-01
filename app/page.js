@@ -1212,15 +1212,19 @@ export default function CRM() {
           {/* Deals */}
           {!detail && view === 'deals' && (
             <div>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>Tenant Rep Pipelines</div>
-              {tenants.map(tenant => {
-                const tDeals = deals.filter(d => fv(d.fields, F.deals.clientName) === tenant)
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>All Deals</div>
+              {[...tenants, '__unassigned__'].map(tenant => {
+                const tDeals = tenant === '__unassigned__'
+                  ? deals.filter(d => !fv(d.fields, F.deals.clientName))
+                  : deals.filter(d => fv(d.fields, F.deals.clientName) === tenant)
+                if (!tDeals.length) return null
+                const displayName = tenant === '__unassigned__' ? 'Unassigned / Other' : tenant
                 const tActive = tDeals.filter(d => !['Executed','Dead'].includes(fv(d.fields, F.deals.stage)))
                 const tPipe = tActive.reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
                 return (
                   <div key={tenant} style={{ marginBottom: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#316828', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: '#c69425' }} onClick={() => setSelected(s => ({...s, tenant}))}>{tenant}</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#316828', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: '#c69425' }} onClick={() => tenant !== '__unassigned__' && setSelected(s => ({...s, tenant}))}>{displayName}</div>
                       <span style={{ fontSize: '12px', color: '#9ca3af' }}>{tActive.length} active · {fmt$(tPipe)}</span>
                     </div>
                     <div style={card}>
