@@ -170,7 +170,7 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
   const gs = f => data ? (fv(data.fields, f) || '') : ''
 
   const [name, setName] = useState(gs(F.deals.name))
-  const [tenant, setTenant] = useState(gs(F.deals.tenant))
+  const [tenant, setTenant] = useState(gs(F.deals.clientName))
   const [stage, setStage] = useState(gs(F.deals.stage) || 'Target Identified')
   const [structure, setStructure] = useState(gs(F.deals.structure))
   const [market, setMarket] = useState(gs(F.deals.market))
@@ -236,7 +236,7 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
   return (
     <div>
       <SearchInput label="Property" records={props} nameField={F.props.addr} subField={F.props.city} onSelect={setPropId} placeholder="Search property..." />
-      <SearchInput label="Linked Listing" records={lists} nameField={F.lists.name} subField={F.lists.market} onSelect={setListId} placeholder="Search listings..." />
+      <SearchInput label="Linked Listing" records={lists} nameField={F.lists.name} subField={F.lists.name} onSelect={setListId} placeholder="Search listings..." />
       <div style={fgrp}><label style={flbl}>Deal Name *</label><input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. 7 Brew – Medina" /></div>
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Tenant / Client</label><input style={inp} value={tenant} onChange={e=>setTenant(e.target.value)} list="tenants" /><datalist id="tenants"><option>7 Brew</option><option>Cricket Wireless</option><option>Portillo's</option><option>Biggby Coffee</option></datalist></div>
@@ -309,7 +309,7 @@ function ListingForm({ data, props, onSave, onCancel }) {
   const g = f => data ? (data.fields[f] !== undefined ? data.fields[f] : '') : ''
   const gs = f => data ? (fv(data.fields, f) || '') : ''
   const [name, setName] = useState(gs(F.lists.name))
-  const [structure, setStructure] = useState(gs(F.lists.structure))
+  const [structure, setStructure] = useState(gs(F.lists.type))
   const [status, setStatus] = useState(gs(F.lists.status) || 'Active')
   const [price, setPrice] = useState(g(F.lists.price) || '')
   const [commRate, setCommRate] = useState(g(F.lists.commRate) ? (g(F.lists.commRate)*100).toFixed(2) : '')
@@ -437,7 +437,7 @@ function ActivityForm({ props, deals, lists, onSave, onCancel, prefillDealId, pr
       </div>
       <SearchInput label="Linked Property" records={props} nameField={F.props.addr} subField={F.props.city} onSelect={setPropId} placeholder="Search property..." />
       <SearchInput label="Linked Deal" records={deals} nameField={F.deals.name} subField={F.deals.tenant} onSelect={setDealId} placeholder="Search deals..." />
-      <SearchInput label="Linked Listing" records={lists} nameField={F.lists.name} subField={F.lists.market} onSelect={setListId} placeholder="Search listings..." />
+      <SearchInput label="Linked Listing" records={lists} nameField={F.lists.name} subField={F.lists.name} onSelect={setListId} placeholder="Search listings..." />
       <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{ ...inp, minHeight: '60px', resize: 'vertical' }} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2dcc8' }}>
         <button style={btnSecondary} onClick={onCancel}>Cancel</button>
@@ -519,7 +519,7 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
           <div style={secTitle}>Deal Details</div>
-          <DetailRow label="Tenant / Client" value={fv(f, F.deals.tenant)} />
+          <DetailRow label="Tenant / Client" value={fv(f, F.deals.clientName)} />
           <DetailRow label="Structure" value={fv(f, F.deals.structure)} />
           <DetailRow label="Market" value={fv(f, F.deals.market)} />
           <DetailRow label="CA Executed" value={f[F.deals.ca] ? '✓ Yes' : 'No'} />
@@ -552,7 +552,7 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
           <div style={card}>
             <table style={tbl}>
               <thead><tr><th style={th}>Name</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead>
-              <tbody>{dealConts.map(c => <tr key={c.id}><td style={td}><div style={{ fontWeight: 500 }}>{fv(c.fields, F.conts.name)}</div></td><td style={{ ...td, color: '#6b7280' }}>{fv(c.fields, F.conts.role)}</td><td style={td}>{fv(c.fields, F.conts.phone)}</td><td style={{ ...td, color: '#6b7280' }}>{fv(c.fields, F.conts.email)}</td></tr>)}</tbody>
+              <tbody>{dealConts.map(c => <tr key={c.id}><td style={td}><div style={{ fontWeight: 500 }}>{contName(c.fields)}</div></td><td style={{ ...td, color: '#6b7280' }}>{fv(c.fields, F.conts.role)}</td><td style={td}>{fv(c.fields, F.conts.phone)}</td><td style={{ ...td, color: '#6b7280' }}>{fv(c.fields, F.conts.email)}</td></tr>)}</tbody>
             </table>
           </div>
         </div>
@@ -600,7 +600,7 @@ function ListingDetail({ listing, allData, onBack, onRefresh }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
           <div style={secTitle}>Listing Details</div>
-          <DetailRow label="Structure" value={fv(f, F.lists.structure)} />
+          <DetailRow label="Structure" value={fv(f, F.lists.type)} />
           <DetailRow label="Asking Rate" value={fv(f, F.lists.rate)} />
           <DetailRow label="Comm. Rate" value={f[F.lists.commRate] ? (f[F.lists.commRate]*100).toFixed(2)+'%' : '—'} />
           <DetailRow label="Listing Date" value={fv(f, F.lists.listDate)} />
@@ -618,7 +618,7 @@ function ListingDetail({ listing, allData, onBack, onRefresh }) {
             <DetailRow label="City" value={fv(linkedProp.fields, F.props.city)} />
             <DetailRow label="Zip" value={fv(linkedProp.fields, F.props.zip)} />
             <DetailRow label="Zoning" value={fv(linkedProp.fields, F.props.zoning)} />
-            <DetailRow label="Type" value={fv(linkedProp.fields, F.props.type)} />
+            <DetailRow label="Type" value={fv(linkedProp.fields, F.props.attrs)} />
             <DetailRow label="Owner" value={fv(linkedProp.fields, F.props.ownerName)} />
             <DetailRow label="Owner Entity" value={fv(linkedProp.fields, F.props.entity)} />
             <DetailRow label="Owner Phone" value={fv(linkedProp.fields, F.props.ownerPhone)} />
@@ -637,7 +637,7 @@ function ListingDetail({ listing, allData, onBack, onRefresh }) {
       {listConts.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Contacts</div>
-          <div style={card}><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead><tbody>{listConts.map(c=><tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{fv(c.fields,F.conts.name)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)}</td><td style={td}>{fv(c.fields,F.conts.phone)}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)}</td></tr>)}</tbody></table></div>
+          <div style={card}><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead><tbody>{listConts.map(c=><tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)}</td><td style={td}>{fv(c.fields,F.conts.phone)}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)}</td></tr>)}</tbody></table></div>
         </div>
       )}
 
@@ -682,7 +682,7 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
           <DetailRow label="Address" value={fv(f, F.props.addr)} />
           <DetailRow label="City" value={fv(f, F.props.city)} />
           <DetailRow label="Zip" value={fv(f, F.props.zip)} />
-          <DetailRow label="Type" value={fv(f, F.props.type)} />
+          <DetailRow label="Type" value={fv(f, F.props.attrs)} />
           <DetailRow label="Zoning" value={fv(f, F.props.zoning)} />
           <DetailRow label="Tags" value={fv(f, F.props.tags)} />
           {f[F.props.notes] && <div style={{ marginTop: '10px' }}><div style={flbl}>Notes</div><div style={{ fontSize: '13px', whiteSpace: 'pre-wrap' }}>{f[F.props.notes]}</div></div>}
@@ -696,9 +696,9 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
         </div>
       </div>
 
-      {propListings.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Listings ({propListings.length})</div><div style={card}><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Structure</th><th style={th}>Price</th><th style={th}>Status</th><th style={th}>Est. Comm</th></tr></thead><tbody>{propListings.map(l=><tr key={l.id}><td style={td}><div style={{fontWeight:500}}>{fv(l.fields,F.lists.name)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(l.fields,F.lists.structure)}</td><td style={td}>{fmt$(l.fields[F.lists.price])}</td><td style={td}><Badge value={l.fields[F.lists.status]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(l.fields[F.lists.estComm])}</td></tr>)}</tbody></table></div></div>}
-      {propDeals.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Deals ({propDeals.length})</div><div style={card}><table style={tbl}><thead><tr><th style={th}>Deal</th><th style={th}>Tenant</th><th style={th}>Stage</th><th style={th}>Est. Comm</th><th style={th}>Close Date</th></tr></thead><tbody>{propDeals.map(d=><tr key={d.id}><td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)}</div></td><td style={td}>{fv(d.fields,F.deals.tenant)}</td><td style={td}><Badge value={d.fields[F.deals.stage]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(d.fields[F.deals.estComm])}</td><td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.closeDate)}</td></tr>)}</tbody></table></div></div>}
-      {propConts.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Contacts</div><div style={card}><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead><tbody>{propConts.map(c=><tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{fv(c.fields,F.conts.name)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)}</td><td style={td}>{fv(c.fields,F.conts.phone)}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)}</td></tr>)}</tbody></table></div></div>}
+      {propListings.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Listings ({propListings.length})</div><div style={card}><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Structure</th><th style={th}>Price</th><th style={th}>Status</th><th style={th}>Est. Comm</th></tr></thead><tbody>{propListings.map(l=><tr key={l.id}><td style={td}><div style={{fontWeight:500}}>{fv(l.fields,F.lists.name)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(l.fields,F.lists.type)}</td><td style={td}>{fmt$(l.fields[F.lists.price])}</td><td style={td}><Badge value={l.fields[F.lists.status]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(l.fields[F.lists.estComm])}</td></tr>)}</tbody></table></div></div>}
+      {propDeals.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Deals ({propDeals.length})</div><div style={card}><table style={tbl}><thead><tr><th style={th}>Deal</th><th style={th}>Tenant</th><th style={th}>Stage</th><th style={th}>Est. Comm</th><th style={th}>Close Date</th></tr></thead><tbody>{propDeals.map(d=><tr key={d.id}><td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)}</div></td><td style={td}>{fv(d.fields,F.deals.clientName)}</td><td style={td}><Badge value={d.fields[F.deals.stage]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(d.fields[F.deals.estComm])}</td><td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.closeDate)}</td></tr>)}</tbody></table></div></div>}
+      {propConts.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Contacts</div><div style={card}><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead><tbody>{propConts.map(c=><tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)}</td><td style={td}>{fv(c.fields,F.conts.phone)}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)}</td></tr>)}</tbody></table></div></div>}
 
       <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Activity Log ({propActs.length})</div>
       <ActsTable acts={propActs} />
@@ -712,7 +712,7 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
 function TenantDashboard({ tenant, allData, onBack, onRefresh }) {
   const [modal, setModal] = useState(null)
   const { deals, acts, lists } = allData
-  const tenantDeals = deals.filter(d => fv(d.fields, F.deals.tenant) === tenant)
+  const tenantDeals = deals.filter(d => fv(d.fields, F.deals.clientName) === tenant)
   const active = tenantDeals.filter(d => !['Executed','Dead'].includes(fv(d.fields, F.deals.stage)))
   const closed = tenantDeals.filter(d => fv(d.fields, F.deals.stage) === 'Executed')
   const pipeline$ = active.reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
@@ -988,17 +988,15 @@ export default function CRM() {
   const allData = { props, lists, deals, conts, acts }
 
   // Tenant groups
-  const tenants = [...new Set(deals.map(d => fv(d.fields, F.deals.tenant)).filter(Boolean))].sort()
+  const tenants = [...new Set(deals.map(d => fv(d.fields, F.deals.clientName)).filter(Boolean))].sort()
 
-  const renderDetail = () => {
+  const detail = (() => {
     if (view === 'deals' && selected.deal) return <DealDetail deal={selected.deal} allData={allData} onBack={() => setSelected(s => ({...s, deal:null}))} onRefresh={onRefresh} />
     if (view === 'deals' && selected.tenant) return <TenantDashboard tenant={selected.tenant} allData={allData} onBack={() => setSelected(s => ({...s, tenant:null}))} onRefresh={onRefresh} />
     if (view === 'listings' && selected.listing) return <ListingDetail listing={selected.listing} allData={allData} onBack={() => setSelected(s => ({...s, listing:null}))} onRefresh={onRefresh} />
-    if (view === 'properties' && selected.property) return <PropertyDetail property={selected.property} allData={allData} onBack={() => setSelected(s => ({...s, property:null}))} onRefresh={onRefresh} />
+    if ((view === 'properties' || view === 'prospecting') && selected.property) return <PropertyDetail property={selected.property} allData={allData} onBack={() => setSelected(s => ({...s, property:null}))} onRefresh={onRefresh} />
     return null
-  }
-
-  const detail = renderDetail()
+  })()
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f0edd8' }}>
@@ -1134,7 +1132,7 @@ export default function CRM() {
                     <tbody>{activeDeals.map(d => (
                       <tr key={d.id} style={{ cursor:'pointer' }} onClick={() => { setView('deals'); setSelected(s => ({...s, deal:d})) }}>
                         <td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)}</div></td>
-                        <td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.tenant)||'—'}</td>
+                        <td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.clientName)||'—'}</td>
                         <td style={td}><Badge value={d.fields[F.deals.stage]} /></td>
                         <td style={{...td,color:'#c69425',fontWeight:600}}>{fmt$(d.fields[F.deals.estComm])}</td>
                         <td style={{...td,color:'#316828',fontWeight:600}}>{fmt$((d.fields[F.deals.estComm]||0)*0.8)}</td>
@@ -1152,7 +1150,7 @@ export default function CRM() {
                     <tbody>{lists.filter(l => fv(l.fields,F.lists.status) === 'Active').map(l => (
                       <tr key={l.id} style={{ cursor:'pointer' }} onClick={() => { setView('listings'); setSelected(s => ({...s, listing:l})) }}>
                         <td style={td}><div style={{fontWeight:500}}>{fv(l.fields,F.lists.name)}</div></td>
-                        <td style={{...td,color:'#6b7280'}}>{fv(l.fields,F.lists.structure)}</td>
+                        <td style={{...td,color:'#6b7280'}}>{fv(l.fields,F.lists.type)}</td>
                         <td style={td}>{fmt$(l.fields[F.lists.price])}</td>
                         <td style={td}><Badge value={l.fields[F.lists.status]} /></td>
                         <td style={{...td,color:'#c69425',fontWeight:600}}>{fmt$(l.fields[F.lists.estComm])}</td>
@@ -1189,9 +1187,14 @@ export default function CRM() {
             <div style={card}>
               <table style={tbl}>
                 <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Type</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
-                <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}><td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td><td style={td}>{fv(r.fields,F.props.city)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(r.fields,F.props.type)||'—'}</td><td style={td}><Badge value={r.fields[F.props.status]} /></td><td style={td}>{r.fields[F.props.acreage]||'—'}</td><td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td></tr>)}</tbody>
+                <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}><td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td><td style={td}>{fv(r.fields,F.props.city)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(r.fields,F.props.attrs)||'—'}</td><td style={td}><Badge value={r.fields[F.props.status]} /></td><td style={td}>{r.fields[F.props.acreage]||'—'}</td><td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td></tr>)}</tbody>
               </table>
             </div>
+          )}
+
+          {/* Prospecting */}
+          {!detail && view === 'prospecting' && (
+            <ProspectingPage allData={allData} onRefresh={onRefresh} onSelectProperty={p => setSelected(s => ({...s, property:p}))} />
           )}
 
           {/* Listings */}
@@ -1199,7 +1202,7 @@ export default function CRM() {
             <div style={card}>
               <table style={tbl}>
                 <thead><tr><th style={th}>Listing</th><th style={th}>Structure</th><th style={th}>Asking Price</th><th style={th}>Status</th><th style={th}>Offer Status</th><th style={th}>Est. Commission</th></tr></thead>
-                <tbody>{filt(lists,[F.lists.name,F.lists.market]).map(l => <tr key={l.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(s => ({...s, listing:l}))}><td style={td}><div style={{fontWeight:500}}>{fv(l.fields,F.lists.name)||'—'}</div><div style={{fontSize:'11px',color:'#9ca3af'}}>{fv(l.fields,F.lists.market)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(l.fields,F.lists.structure)||'—'}</td><td style={td}>{fmt$(l.fields[F.lists.price])}</td><td style={td}><Badge value={l.fields[F.lists.status]} /></td><td style={td}><Badge value={l.fields[F.lists.offerStatus]} /></td><td style={{...td,color:'#c69425',fontWeight:600}}>{fmt$(l.fields[F.lists.estComm])}</td></tr>)}</tbody>
+                <tbody>{filt(lists,[F.lists.name,F.lists.name]).map(l => <tr key={l.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(s => ({...s, listing:l}))}><td style={td}><div style={{fontWeight:500}}>{fv(l.fields,F.lists.name)||'—'}</div><div style={{fontSize:'11px',color:'#9ca3af'}}>{fv(l.fields,F.lists.name)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(l.fields,F.lists.type)||'—'}</td><td style={td}>{fmt$(l.fields[F.lists.price])}</td><td style={td}><Badge value={l.fields[F.lists.status]} /></td><td style={td}><Badge value={l.fields[F.lists.offerStatus]} /></td><td style={{...td,color:'#c69425',fontWeight:600}}>{fmt$(l.fields[F.lists.estComm])}</td></tr>)}</tbody>
               </table>
             </div>
           )}
@@ -1209,7 +1212,7 @@ export default function CRM() {
             <div>
               <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>Tenant Rep Pipelines</div>
               {tenants.map(tenant => {
-                const tDeals = deals.filter(d => fv(d.fields, F.deals.tenant) === tenant)
+                const tDeals = deals.filter(d => fv(d.fields, F.deals.clientName) === tenant)
                 const tActive = tDeals.filter(d => !['Executed','Dead'].includes(fv(d.fields, F.deals.stage)))
                 const tPipe = tActive.reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
                 return (
@@ -1235,7 +1238,7 @@ export default function CRM() {
             <div style={card}>
               <table style={tbl}>
                 <thead><tr><th style={th}>Name</th><th style={th}>Company</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead>
-                <tbody>{filt(conts,[F.conts.name,F.conts.company]).map(c => <tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{fv(c.fields,F.conts.name)||'—'}</div></td><td style={td}>{fv(c.fields,F.conts.company)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)||'—'}</td><td style={td}>{fv(c.fields,F.conts.phone)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)||'—'}</td></tr>)}</tbody>
+                <tbody>{filt(conts,[F.conts.name,F.conts.company]).map(c => <tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)||'—'}</div></td><td style={td}>{fv(c.fields,F.conts.company)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)||'—'}</td><td style={td}>{fv(c.fields,F.conts.phone)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)||'—'}</td></tr>)}</tbody>
               </table>
             </div>
           )}
@@ -1351,7 +1354,7 @@ export default function CRM() {
       {modal === 'listing' && <Modal title="New Listing" onClose={() => setModal(null)} wide><ListingForm props={props} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
       {modal === 'property' && <Modal title="New Property" onClose={() => setModal(null)}><PropertyForm onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
       {modal === 'contact' && <Modal title="New Contact" onClose={() => setModal(null)}><ContactForm props={props} deals={deals} lists={lists} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
-      {modal === 'activity' && <Modal title="Log Activity" onClose={() => setModal(null)}><ActivityForm props={props} deals={deals} lists={lists} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
+      {modal === 'activity' && <Modal title="Log Activity" onClose={() => setModal(null)}><ActivityForm props={props} deals={deals} lists={lists} conts={conts} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
     </div>
   )
 }
