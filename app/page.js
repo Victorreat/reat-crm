@@ -358,8 +358,8 @@ function ListingForm({ data, props, onSave, onCancel }) {
       <SearchInput label="Property" records={props} nameField={F.props.addr} subField={F.props.city} onSelect={setPropId} placeholder="Search property..." />
       <div style={fgrp}><label style={flbl}>Listing Name *</label><input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. 960 N Leavitt – Amherst" /></div>
       <div style={row2}>
-        <div style={fgrp}><label style={flbl}>Structure</label><select style={inp} value={structure} onChange={e=>setStructure(e.target.value)}><option value="">Select...</option><option>For Sale</option><option>For Lease</option><option>For Sale &amp; Lease</option></select></div>
-        <div style={fgrp}><label style={flbl}>Status</label><select style={inp} value={status} onChange={e=>setStatus(e.target.value)}>{['Active','Offer Received','Under Contract','Closed','Expired','Withdrawn'].map(s=><option key={s}>{s}</option>)}</select></div>
+        <div style={fgrp}><label style={flbl}>Structure</label><select style={inp} value={structure} onChange={e=>setStructure(e.target.value)}><option value="">Select...</option><option>Sale</option><option>Lease</option><option>Sale or Lease</option><option>Sale or Ground Lease</option><option>Ground Lease</option><option>Build to Suit</option></select></div>
+        <div style={fgrp}><label style={flbl}>Status</label><select style={inp} value={status} onChange={e=>setStatus(e.target.value)}>{['Active','Under Contract','Closed','Expired','Withdrawn'].map(s=><option key={s}>{s}</option>)}</select></div>
       </div>
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Asking Price $</label><input style={inp} type="number" value={price} onChange={e=>setPrice(e.target.value)} /></div>
@@ -1056,11 +1056,20 @@ export default function CRM() {
               <div>
                 {/* KPI Bar */}
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'12px', marginBottom:'20px' }}>
-                  <StatCard label="Active Pipeline" value={fmt$(activePipeline)} color="#316828" />
-                  <StatCard label="YTD Closed Comm." value={fmt$(closedComm)} color="#c69425" />
-                  <StatCard label="Active Listings" value={activeListings} />
-                  <StatCard label="Follow-Ups Due" value={overdueFU.length} color={overdueFU.length > 0 ? '#dc2626' : undefined} />
-                  <StatCard label="Active Deals" value={activeDeals.length} />
+                  {[
+                    { label:'Active Pipeline', value:fmt$(activePipeline), color:'#316828', onClick:() => setView2('deals') },
+                    { label:'Your 80% Pipeline', value:fmt$(activePipeline*0.8), color:'#c69425', onClick:() => setView2('deals') },
+                    { label:'Active Deals', value:activeDeals.length, onClick:() => setView2('deals') },
+                    { label:'Active Listings', value:activeListings, onClick:() => setView2('listings') },
+                    { label:'Follow-Ups Due', value:overdueFU.length, color:overdueFU.length>0?'#dc2626':undefined, onClick:() => setView2('activities') },
+                  ].map(c => (
+                    <div key={c.label} onClick={c.onClick} style={{ background:'#fff', border:'1px solid #e2dcc8', borderRadius:'10px', padding:'14px 16px', cursor:'pointer' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='#faf8f0'}
+                      onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+                      <div style={{ fontSize:'11px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'6px' }}>{c.label}</div>
+                      <div style={{ fontSize:'22px', fontWeight:700, color:c.color||'#1a1a1a' }}>{c.value}</div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Pipeline by close date */}
@@ -1072,8 +1081,9 @@ export default function CRM() {
                     return (
                       <div key={b.key} style={{ background:'#fff', border:`1px solid ${b.bg === '#fff' ? '#e2dcc8' : b.bg}`, borderLeft:`4px solid ${b.color}`, borderRadius:'8px', padding:'12px 14px' }}>
                         <div style={{ fontSize:'11px', fontWeight:700, color:b.color, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'6px' }}>{b.label}</div>
-                        <div style={{ fontSize:'20px', fontWeight:700, color:'#1a1a1a', marginBottom:'4px' }}>{fmt$(bComm)}</div>
-                        <div style={{ fontSize:'12px', color:'#6b7280', marginBottom: bDeals.length ? '8px' : 0 }}>{bDeals.length} deal{bDeals.length !== 1 ? 's' : ''}</div>
+                        <div style={{ fontSize:'18px', fontWeight:700, color:'#1a1a1a', marginBottom:'2px' }}>{fmt$(bComm)}</div>
+                        <div style={{ fontSize:'12px', color:'#316828', fontWeight:600 }}>You: {fmt$(bComm*0.8)}</div>
+                        <div style={{ fontSize:'11px', color:'#9ca3af', marginBottom: bDeals.length ? '8px' : 0 }}>REAT: {fmt$(bComm*0.2)} · {bDeals.length} deal{bDeals.length !== 1 ? 's' : ''}</div>
                         {bDeals.map(d => (
                           <div key={d.id} onClick={() => { setView('deals'); setSelected(s => ({...s, deal:d})) }}
                             style={{ fontSize:'12px', padding:'5px 7px', marginBottom:'3px', background:b.bg, borderRadius:'4px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -1099,11 +1109,29 @@ export default function CRM() {
                   )}
                 </div>
 
-                {/* Active Listings strip */}
-                <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px' }}>Active Listings</div>
+                {/* Active Deals */}
+                <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px' }}>Active Deals</div>
                 <div style={{ ...card, marginBottom:'20px' }}>
                   <table style={tbl}>
-                    <thead><tr><th style={th}>Listing</th><th style={th}>Structure</th><th style={th}>Asking Price</th><th style={th}>Status</th><th style={th}>Est. Commission</th></tr></thead>
+                    <thead><tr><th style={th}>Deal</th><th style={th}>Tenant</th><th style={th}>Stage</th><th style={th}>Gross Comm.</th><th style={th}>Your 80%</th><th style={th}>Close Date</th></tr></thead>
+                    <tbody>{activeDeals.map(d => (
+                      <tr key={d.id} style={{ cursor:'pointer' }} onClick={() => { setView('deals'); setSelected(s => ({...s, deal:d})) }}>
+                        <td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)}</div></td>
+                        <td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.tenant)||'—'}</td>
+                        <td style={td}><Badge value={d.fields[F.deals.stage]} /></td>
+                        <td style={{...td,color:'#c69425',fontWeight:600}}>{fmt$(d.fields[F.deals.estComm])}</td>
+                        <td style={{...td,color:'#316828',fontWeight:600}}>{fmt$((d.fields[F.deals.estComm]||0)*0.8)}</td>
+                        <td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.closeDate)||'—'}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+
+                {/* Active Listings */}
+                <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px' }}>Listing Pipeline</div>
+                <div style={{ ...card, marginBottom:'20px' }}>
+                  <table style={tbl}>
+                    <thead><tr><th style={th}>Listing</th><th style={th}>Structure</th><th style={th}>Asking Price</th><th style={th}>Status</th><th style={th}>Gross Comm.</th><th style={th}>Your 80%</th></tr></thead>
                     <tbody>{lists.filter(l => fv(l.fields,F.lists.status) === 'Active').map(l => (
                       <tr key={l.id} style={{ cursor:'pointer' }} onClick={() => { setView('listings'); setSelected(s => ({...s, listing:l})) }}>
                         <td style={td}><div style={{fontWeight:500}}>{fv(l.fields,F.lists.name)}</div></td>
@@ -1111,6 +1139,7 @@ export default function CRM() {
                         <td style={td}>{fmt$(l.fields[F.lists.price])}</td>
                         <td style={td}><Badge value={l.fields[F.lists.status]} /></td>
                         <td style={{...td,color:'#c69425',fontWeight:600}}>{fmt$(l.fields[F.lists.estComm])}</td>
+                        <td style={{...td,color:'#316828',fontWeight:600}}>{fmt$((l.fields[F.lists.estComm]||0)*0.8)}</td>
                       </tr>
                     ))}</tbody>
                   </table>
