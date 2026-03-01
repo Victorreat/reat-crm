@@ -43,6 +43,8 @@ const F = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt$ = n => n ? '$' + Number(n).toLocaleString('en-US', {maximumFractionDigits:0}) : '—'
+const fmtPct = n => n ? (n * 100).toFixed(2) + '%' : '—'
+const contName = f => [f?.['First Name'], f?.['Last Name']].filter(Boolean).join(' ') || '—'
 const fv = (fields, key) => {
   const v = fields?.[key]
   if (v === null || v === undefined || v === '') return ''
