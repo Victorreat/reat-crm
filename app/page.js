@@ -82,7 +82,9 @@ async function apiCreate(table, fields) {
 }
 async function apiUpdate(table, id, fields) {
   const res = await fetch('/api/records', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table, id, fields }) })
-  return res.json()
+  const json = await res.json()
+  if (json.error) throw new Error(json.error)
+  return json
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -219,10 +221,14 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
       'Linked Listing': listId ? [{ id: listId }] : undefined,
     }
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
-    if (editing) await apiUpdate('deals', data.id, clean)
-    else await apiCreate('deals', clean)
-    setSaving(false)
-    onSave()
+    try {
+      if (editing) await apiUpdate('deals', data.id, clean)
+      else await apiCreate('deals', clean)
+      setSaving(false); onSave()
+    } catch(err) {
+      setSaving(false)
+      alert('Save failed: ' + err.message)
+    }
   }
 
   return (
@@ -320,9 +326,14 @@ function ListingForm({ data, props, onSave, onCancel }) {
     setSaving(true)
     const fields = { 'Listing Name':name, 'Deal Structure':structure||undefined, 'Listing Status':status, 'Asking Price':parseFloat(price)||undefined, 'Commission Rate':parseFloat(commRate)?parseFloat(commRate)/100:undefined, 'Est. Commission':estComm||undefined, 'Listing Date':listDate||undefined, 'Expiration Date':expDate||undefined, 'Co-Broker':coBroker||undefined, 'Current Offer / LOI':offer||undefined, 'Offer Status':offerStatus||undefined, 'Buyer / Tenant':buyerTenant||undefined, 'Notes':notes||undefined, 'Property':propId?[{id:propId}]:undefined }
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
-    if (editing) await apiUpdate('lists', data.id, clean)
-    else await apiCreate('lists', clean)
-    setSaving(false); onSave()
+    try {
+      if (editing) await apiUpdate('lists', data.id, clean)
+      else await apiCreate('lists', clean)
+      setSaving(false); onSave()
+    } catch(err) {
+      setSaving(false)
+      alert('Save failed: ' + err.message)
+    }
   }
   return (
     <div>
