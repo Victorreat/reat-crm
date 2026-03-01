@@ -207,9 +207,9 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
       'Deal Stage': stage,
       'Deal Structure': structure || undefined,
       'Market': market || undefined,
-      'Deal Value': dealValue || undefined,
-      'Commission Rate': commRateN ? commRateN / 100 : undefined,
-      'Est. Commission': estComm || undefined,
+      'Deal Value': dealValue || (editing ? g(F.deals.value) : undefined),
+      'Commission Rate': commRateN ? commRateN / 100 : (editing ? g(F.deals.commRate) : undefined),
+      'Est. Commission': estComm || (editing ? g(F.deals.estComm) : undefined),
       'Projected Close Date': closeDate || undefined,
       'Landlord Entity': landlordEntity || undefined,
       'Landlord Contact': landlordContact || undefined,
@@ -748,6 +748,136 @@ function TenantDashboard({ tenant, allData, onBack, onRefresh }) {
   )
 }
 
+
+// ─── Property Form ────────────────────────────────────────────────────────────
+function PropertyForm({ data, onSave, onCancel }) {
+  const editing = !!data
+  const g = f => data?.fields?.[f] || ''
+  const [addr, setAddr] = useState(g('Address'))
+  const [city, setCity] = useState(g('City'))
+  const [state, setState] = useState(g('State') || 'OH')
+  const [zip, setZip] = useState(g('Zip'))
+  const [market, setMarket] = useState(g('Market'))
+  const [type, setType] = useState(g('Property Type'))
+  const [acreage, setAcreage] = useState(g('Acreage'))
+  const [sf, setSf] = useState(g('Building SF'))
+  const [zoning, setZoning] = useState(g('Zoning'))
+  const [status, setStatus] = useState(g('Prospecting Status') || 'Active')
+  const [entity, setEntity] = useState(g('Ownership Entity'))
+  const [ownerName, setOwnerName] = useState(g('Owner Name'))
+  const [ownerPhone, setOwnerPhone] = useState(g('Owner Phone'))
+  const [ownerEmail, setOwnerEmail] = useState(g('Owner Email'))
+  const [notes, setNotes] = useState(g('Notes'))
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!addr) return alert('Address required')
+    setSaving(true)
+    const fields = {
+      'Address': addr, 'City': city||undefined, 'State': state||undefined,
+      'Zip': zip||undefined, 'Market': market||undefined, 'Property Type': type||undefined,
+      'Acreage': acreage ? parseFloat(acreage) : undefined,
+      'Building SF': sf ? parseInt(sf) : undefined,
+      'Zoning': zoning||undefined, 'Prospecting Status': status,
+      'Ownership Entity': entity||undefined, 'Owner Name': ownerName||undefined,
+      'Owner Phone': ownerPhone||undefined, 'Owner Email': ownerEmail||undefined,
+      'Notes': notes||undefined,
+    }
+    const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
+    if (editing) await apiUpdate('props', data.id, clean)
+    else await apiCreate('props', clean)
+    setSaving(false); onSave()
+  }
+
+  return (
+    <div>
+      <div style={fgrp}><label style={flbl}>Address *</label><input style={inp} value={addr} onChange={e=>setAddr(e.target.value)} placeholder="123 Main St" /></div>
+      <div style={row2}>
+        <div style={fgrp}><label style={flbl}>City</label><input style={inp} value={city} onChange={e=>setCity(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Zip</label><input style={inp} value={zip} onChange={e=>setZip(e.target.value)} /></div>
+      </div>
+      <div style={row2}>
+        <div style={fgrp}><label style={flbl}>Market</label><input style={inp} value={market} onChange={e=>setMarket(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Property Type</label><select style={inp} value={type} onChange={e=>setType(e.target.value)}><option value="">Select...</option>{['Pad / Out Parcel','Freestanding','Inline','Vacant Land','Build to Suit','Ground Lease Candidate','Restaurant','Mixed-Use','Multifamily','Other'].map(t=><option key={t}>{t}</option>)}</select></div>
+      </div>
+      <div style={row2}>
+        <div style={fgrp}><label style={flbl}>Acreage</label><input style={inp} type="number" step="0.01" value={acreage} onChange={e=>setAcreage(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Building SF</label><input style={inp} type="number" value={sf} onChange={e=>setSf(e.target.value)} /></div>
+      </div>
+      <div style={row2}>
+        <div style={fgrp}><label style={flbl}>Zoning</label><input style={inp} value={zoning} onChange={e=>setZoning(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Status</label><select style={inp} value={status} onChange={e=>setStatus(e.target.value)}>{['Active','Inactive','Under Contract','Sold'].map(s=><option key={s}>{s}</option>)}</select></div>
+      </div>
+      <div style={{...secTitle, marginTop:'10px'}}>Ownership</div>
+      <div style={fgrp}><label style={flbl}>Ownership Entity</label><input style={inp} value={entity} onChange={e=>setEntity(e.target.value)} /></div>
+      <div style={fgrp}><label style={flbl}>Owner Name</label><input style={inp} value={ownerName} onChange={e=>setOwnerName(e.target.value)} /></div>
+      <div style={row2}>
+        <div style={fgrp}><label style={flbl}>Owner Phone</label><input style={inp} value={ownerPhone} onChange={e=>setOwnerPhone(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Owner Email</label><input style={inp} value={ownerEmail} onChange={e=>setOwnerEmail(e.target.value)} /></div>
+      </div>
+      <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{...inp, minHeight:'70px', resize:'vertical'}} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
+      <div style={{display:'flex', gap:'8px', justifyContent:'flex-end', marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #e2dcc8'}}>
+        <button style={btnSecondary} onClick={onCancel}>Cancel</button>
+        <button style={{...btnPrimary, opacity:saving?0.6:1}} onClick={handleSave} disabled={saving}>{saving?'Saving...':editing?'Save Changes':'Save Property'}</button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Contact Form ─────────────────────────────────────────────────────────────
+function ContactForm({ data, props, deals, lists, onSave, onCancel }) {
+  const editing = !!data
+  const g = f => data?.fields?.[f] || ''
+  const [name, setName] = useState(g('Name'))
+  const [company, setCompany] = useState(g('Company'))
+  const [role, setRole] = useState(g('Role'))
+  const [phone, setPhone] = useState(g('Phone'))
+  const [email, setEmail] = useState(g('Email'))
+  const [notes, setNotes] = useState(g('Notes'))
+  const [propId, setPropId] = useState(null)
+  const [dealId, setDealId] = useState(null)
+  const [listId, setListId] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!name) return alert('Name required')
+    setSaving(true)
+    const fields = {
+      'Name': name, 'Company': company||undefined, 'Role': role||undefined,
+      'Phone': phone||undefined, 'Email': email||undefined, 'Notes': notes||undefined,
+      'Linked Property': propId?[{id:propId}]:undefined,
+      'Linked Deal': dealId?[{id:dealId}]:undefined,
+      'Linked Listing': listId?[{id:listId}]:undefined,
+    }
+    const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
+    if (editing) await apiUpdate('conts', data.id, clean)
+    else await apiCreate('conts', clean)
+    setSaving(false); onSave()
+  }
+
+  return (
+    <div>
+      <div style={fgrp}><label style={flbl}>Name *</label><input style={inp} value={name} onChange={e=>setName(e.target.value)} /></div>
+      <div style={row2}>
+        <div style={fgrp}><label style={flbl}>Company</label><input style={inp} value={company} onChange={e=>setCompany(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Role</label><select style={inp} value={role} onChange={e=>setRole(e.target.value)}><option value="">Select...</option>{['Owner','Landlord','Broker','Attorney','Tenant Rep','Property Manager','Other'].map(r=><option key={r}>{r}</option>)}</select></div>
+      </div>
+      <div style={row2}>
+        <div style={fgrp}><label style={flbl}>Phone</label><input style={inp} value={phone} onChange={e=>setPhone(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Email</label><input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} /></div>
+      </div>
+      <SearchInput label="Linked Property" records={props} nameField="Address" subField="City" onSelect={setPropId} placeholder="Search property..." />
+      <SearchInput label="Linked Deal" records={deals} nameField="Deal Name" subField="Market" onSelect={setDealId} placeholder="Search deals..." />
+      <SearchInput label="Linked Listing" records={lists} nameField="Listing Name" subField="Market" onSelect={setListId} placeholder="Search listings..." />
+      <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{...inp, minHeight:'60px', resize:'vertical'}} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
+      <div style={{display:'flex', gap:'8px', justifyContent:'flex-end', marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #e2dcc8'}}>
+        <button style={btnSecondary} onClick={onCancel}>Cancel</button>
+        <button style={{...btnPrimary, opacity:saving?0.6:1}} onClick={handleSave} disabled={saving}>{saving?'Saving...':editing?'Save Changes':'Save Contact'}</button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function CRM() {
   const { user } = useUser()
@@ -769,7 +899,19 @@ export default function CRM() {
   useEffect(() => { fetchData() }, [fetchData])
 
   const setView2 = (v) => { setView(v); setSearch(''); setSelected({ listing: null, deal: null, property: null, tenant: null }) }
-  const onRefresh = () => fetchData()
+  const onRefresh = async () => {
+    const res = await fetch('/api/data')
+    const json = await res.json()
+    setData(json)
+    // Update selected records with fresh data so detail views reflect changes
+    setSelected(s => {
+      const updated = { ...s }
+      if (s.deal && json.deals) updated.deal = json.deals.find(d => d.id === s.deal.id) || s.deal
+      if (s.listing && json.lists) updated.listing = json.lists.find(l => l.id === s.listing.id) || s.listing
+      if (s.property && json.props) updated.property = json.props.find(p => p.id === s.property.id) || s.property
+      return updated
+    })
+  }
 
   if (!data || loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0edd8' }}>
@@ -964,7 +1106,7 @@ export default function CRM() {
       {modal === 'quickadd' && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => e.target === e.currentTarget && setModal(null)}>
           <div style={{ background: '#fff', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,0.15)', minWidth: '160px' }}>
-            {[['deal','Deal'],['listing','Listing'],['activity','Activity']].map(([key, label]) => (
+            {[['deal','Deal'],['listing','Listing'],['property','Property'],['contact','Contact'],['activity','Activity']].map(([key, label]) => (
               <div key={key} style={{ padding: '12px 18px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, borderBottom: '1px solid #f5f2e8' }}
                 onMouseEnter={e => e.currentTarget.style.background='#f9f7f0'}
                 onMouseLeave={e => e.currentTarget.style.background='#fff'}
@@ -975,6 +1117,8 @@ export default function CRM() {
       )}
       {modal === 'deal' && <Modal title="New Deal" onClose={() => setModal(null)} wide><DealForm props={props} lists={lists} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
       {modal === 'listing' && <Modal title="New Listing" onClose={() => setModal(null)} wide><ListingForm props={props} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
+      {modal === 'property' && <Modal title="New Property" onClose={() => setModal(null)}><PropertyForm onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
+      {modal === 'contact' && <Modal title="New Contact" onClose={() => setModal(null)}><ContactForm props={props} deals={deals} lists={lists} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
       {modal === 'activity' && <Modal title="Log Activity" onClose={() => setModal(null)}><ActivityForm props={props} deals={deals} lists={lists} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
     </div>
   )
