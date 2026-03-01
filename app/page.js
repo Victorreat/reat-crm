@@ -401,10 +401,27 @@ function ActivityForm({ props, deals, lists, onSave, onCancel, prefillDealId, pr
   const handleSave = async () => {
     if (!desc) return alert('Activity required')
     setSaving(true)
-    const fields = { 'Activity':desc, 'Type':type||undefined, 'Date':date, 'Outcome':outcome||undefined, 'Follow-Up Date':fuDate||undefined, 'Follow-Up Action':fuAction||undefined, 'Notes':notes||undefined, 'Linked Property':propId?[{id:propId}]:undefined, 'Linked Deal':dealId?[{id:dealId}]:undefined, 'Linked Listing':listId?[{id:listId}]:undefined }
+    const fields = {
+      'Activity': desc,
+      'Type': type || undefined,
+      'Date': date || undefined,
+      'Outcome': outcome || undefined,
+      'Follow-Up Date': fuDate || undefined,
+      'Follow-Up Action': fuAction || undefined,
+      'Notes': notes || undefined,
+      ...(propId ? { 'Linked Property': [{ id: propId }] } : {}),
+      ...(dealId ? { 'Linked Deal': [{ id: dealId }] } : {}),
+      ...(listId ? { 'Linked Listing': [{ id: listId }] } : {}),
+    }
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
-    await apiCreate('acts', clean)
-    setSaving(false); onSave()
+    console.log('Saving activity:', clean)
+    try {
+      await apiCreate('acts', clean)
+      setSaving(false); onSave()
+    } catch(err) {
+      setSaving(false)
+      alert('Save failed: ' + err.message)
+    }
   }
   return (
     <div>
@@ -964,7 +981,7 @@ export default function CRM() {
     { id: 'listings', label: 'Listings', count: lists.length },
     { id: 'deals', label: 'Deals', count: deals.length },
     { id: 'contacts', label: 'Contacts', count: conts.length },
-    { id: 'activities', label: 'Prospecting', count: acts.length },
+    { id: 'activities', label: 'Activity', count: acts.length },
     { id: 'calendar', label: 'Commission Cal.' },
   ]
 
@@ -1057,8 +1074,8 @@ export default function CRM() {
                 {/* KPI Bar */}
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'12px', marginBottom:'20px' }}>
                   {[
-                    { label:'Active Pipeline', value:fmt$(activePipeline), color:'#316828', onClick:() => setView2('deals') },
-                    { label:'Your 80% Pipeline', value:fmt$(activePipeline*0.8), color:'#c69425', onClick:() => setView2('deals') },
+                    { label:'Active Pipeline (Your 80%)', value:fmt$(activePipeline*0.8), color:'#316828', onClick:() => setView2('deals') },
+                    { label:'YTD Closed (Gross)', value:fmt$(closedComm), color:'#c69425', onClick:() => setView2('deals') },
                     { label:'Active Deals', value:activeDeals.length, onClick:() => setView2('deals') },
                     { label:'Active Listings', value:activeListings, onClick:() => setView2('listings') },
                     { label:'Follow-Ups Due', value:overdueFU.length, color:overdueFU.length>0?'#dc2626':undefined, onClick:() => setView2('activities') },
@@ -1223,8 +1240,64 @@ export default function CRM() {
             </div>
           )}
 
-          {/* Activities */}
-          {!detail && view === 'activities' && <ActsTable acts={filt(acts,[F.acts.desc])} />}
+          {/* Activity / GTD */}
+          {!detail && view === 'activities' && (() => {
+            const now = new Date()
+            const today = now.toDateString()
+            
+            // GTD buckets
+            const overdueFU = acts.filter(a => {
+              const fd = a.fields['Follow-Up Date']
+              return fd && !a.fields['Follow-Up Done'] && new Date(fd) < now && new Date(fd).toDateString() !== today
+            })
+            const dueTodayFU = acts.filter(a => {
+              const fd = a.fields['Follow-Up Date']
+              return fd && !a.fields['Follow-Up Done'] && new Date(fd).toDateString() === today
+            })
+            const upcoming = acts.filter(a => {
+              const fd = a.fields['Follow-Up Date']
+              return fd && !a.fields['Follow-Up Done'] && new Date(fd) > now && new Date(fd).toDateString() !== today
+            }).sort((a,b) => (a.fields['Follow-Up Date']||'').localeCompare(b.fields['Follow-Up Date']||''))
+            const waitingFor = acts.filter(a => fv(a.fields,'Type') === 'Waiting For')
+            const recent = [...acts].sort((a,b) => (b.fields['Date']||'').localeCompare(a.fields['Date']||'')).slice(0,20)
+
+            const GTDSection = ({title, color, items, emptyMsg}) => (
+              <div style={{marginBottom:'18px'}}>
+                <div style={{fontSize:'12px', fontWeight:700, color:color||'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>{title} ({items.length})</div>
+                {items.length ? (
+                  <div style={card}>
+                    <table style={tbl}>
+                      <thead><tr><th style={th}>Activity</th><th style={th}>Type</th><th style={th}>Follow-Up</th><th style={th}>Action</th><th style={th}>Linked To</th></tr></thead>
+                      <tbody>{items.map(a => (
+                        <tr key={a.id}>
+                          <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,'Activity')||'—'}</div>{a.fields['Notes']&&<div style={{fontSize:'11px',color:'#9ca3af'}}>{a.fields['Notes']}</div>}</td>
+                          <td style={{...td,color:'#6b7280'}}>{fv(a.fields,'Type')||'—'}</td>
+                          <td style={{...td,color:color||'#6b7280',fontWeight:600}}>{fv(a.fields,'Follow-Up Date')||'—'}</td>
+                          <td style={{...td,color:'#6b7280'}}>{fv(a.fields,'Follow-Up Action')||'—'}</td>
+                          <td style={{...td,color:'#6b7280',fontSize:'11px'}}>
+                            {(a.fields['Linked Deal']||[]).length>0?'Deal':''}{(a.fields['Linked Property']||[]).length>0?'Property':''}{(a.fields['Linked Listing']||[]).length>0?'Listing':''}
+                          </td>
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                ) : <div style={{color:'#9ca3af',fontSize:'13px',padding:'8px 0'}}>{emptyMsg}</div>}
+              </div>
+            )
+
+            return (
+              <div>
+                <GTDSection title="🔴 Overdue" color="#dc2626" items={overdueFU} emptyMsg="Nothing overdue" />
+                <GTDSection title="🟡 Due Today" color="#c69425" items={dueTodayFU} emptyMsg="Nothing due today" />
+                <GTDSection title="🟢 Upcoming Follow-Ups" color="#316828" items={upcoming} emptyMsg="No upcoming follow-ups" />
+                <GTDSection title="⏳ Waiting For" color="#7c3aed" items={waitingFor} emptyMsg="Nothing waiting" />
+                <div style={{marginBottom:'18px'}}>
+                  <div style={{fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Recent Activity Log</div>
+                  <ActsTable acts={recent} />
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Calendar */}
           {!detail && view === 'calendar' && (() => {
