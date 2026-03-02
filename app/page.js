@@ -215,15 +215,20 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
     setSaving(true)
     const fields = {
       'Deal Name': name,
-      'Tenant / Client': tenant || undefined,
+      'Deal Type': dealType || undefined,
+      'Client Name': clientName || undefined,
+      'Client Entity': clientEntity || undefined,
       'Deal Stage': stage,
       'Deal Structure': structure || undefined,
-      'Market': market || undefined,
       'Deal Value': dealValue || (editing ? g(F.deals.value) : undefined),
       'Commission Rate': commRateN ? commRateN / 100 : (editing ? g(F.deals.commRate) : undefined),
       'Est. Commission': estComm || (editing ? g(F.deals.estComm) : undefined),
+      'Referral Fee': referralFee ? parseFloat(referralFee) : undefined,
       'Projected Close Date': closeDate || undefined,
       'Commission Agreement Executed': ca,
+      'Agency Disclosure Executed': agencyDisclosure,
+      'Buyer/Tenant': buyerTenant || undefined,
+      'Counterpart Contact': counterpart || undefined,
       'Notes': notes || undefined,
       'Property': propId ? [{ id: propId }] : undefined,
       'Linked Listing': listId ? [{ id: listId }] : undefined,
@@ -250,7 +255,6 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
       </div>
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Structure</label><select style={inp} value={structure} onChange={e=>setStructure(e.target.value)}><option value="">Select...</option><option>Lease</option><option>Ground Lease</option><option>Purchase</option></select></div>
-        <div style={fgrp}><label style={flbl}>Market</label><input style={inp} value={market} onChange={e=>setMarket(e.target.value)} /></div>
       </div>
 
       {structure === 'Lease' && (
@@ -814,8 +818,7 @@ function PropertyForm({ data, onSave, onCancel }) {
   const [city, setCity] = useState(g('City'))
   const [state, setState] = useState(g('State') || 'OH')
   const [zip, setZip] = useState(g('Zip'))
-  const [market, setMarket] = useState(g('Market'))
-  const [type, setType] = useState(g('Property Type'))
+  const [attrs, setAttrs] = useState(fv(data?.fields, F.props.attrs) || '')
   const [acreage, setAcreage] = useState(g('Acreage'))
   const [sf, setSf] = useState(g('Building SF'))
   const [zoning, setZoning] = useState(g('Zoning'))
@@ -832,7 +835,7 @@ function PropertyForm({ data, onSave, onCancel }) {
     setSaving(true)
     const fields = {
       'Address': addr, 'City': city||undefined, 'State': state||undefined,
-      'Zip': zip||undefined, 'Market': market||undefined, 'Property Type': type||undefined,
+      'Zip': zip||undefined,
       'Acreage': acreage ? parseFloat(acreage) : undefined,
       'Building SF': sf ? parseInt(sf) : undefined,
       'Zoning': zoning||undefined, 'Prospecting Status': status,
@@ -854,8 +857,7 @@ function PropertyForm({ data, onSave, onCancel }) {
         <div style={fgrp}><label style={flbl}>Zip</label><input style={inp} value={zip} onChange={e=>setZip(e.target.value)} /></div>
       </div>
       <div style={row2}>
-        <div style={fgrp}><label style={flbl}>Market</label><input style={inp} value={market} onChange={e=>setMarket(e.target.value)} /></div>
-        <div style={fgrp}><label style={flbl}>Property Type</label><select style={inp} value={type} onChange={e=>setType(e.target.value)}><option value="">Select...</option>{['Pad / Out Parcel','Freestanding','Inline','Vacant Land','Build to Suit','Ground Lease Candidate','Restaurant','Mixed-Use','Multifamily','Other'].map(t=><option key={t}>{t}</option>)}</select></div>
+        <div style={fgrp}><label style={flbl}>Property Attributes</label><input style={inp} value={attrs} onChange={e=>setAttrs(e.target.value)} placeholder="e.g. Hard Corner, Freestanding, Drive-Thru" /></div>
       </div>
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Acreage</label><input style={inp} type="number" step="0.01" value={acreage} onChange={e=>setAcreage(e.target.value)} /></div>
@@ -885,9 +887,11 @@ function PropertyForm({ data, onSave, onCancel }) {
 function ContactForm({ data, props, deals, lists, onSave, onCancel }) {
   const editing = !!data
   const g = f => data?.fields?.[f] || ''
-  const [name, setName] = useState(g('Name'))
+  const [firstName, setFirstName] = useState(g('First Name'))
+  const [lastName, setLastName] = useState(g('Last Name'))
   const [company, setCompany] = useState(g('Company'))
-  const [role, setRole] = useState(g('Role'))
+  const [title, setTitle] = useState(g('Title'))
+  const [role, setRole] = useState(fv(data?.fields, 'Role') || '')
   const [phone, setPhone] = useState(g('Phone'))
   const [email, setEmail] = useState(g('Email'))
   const [notes, setNotes] = useState(g('Notes'))
@@ -897,35 +901,47 @@ function ContactForm({ data, props, deals, lists, onSave, onCancel }) {
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
-    if (!name) return alert('Name required')
+    if (!firstName && !lastName) return alert('First or Last Name required')
     setSaving(true)
     const fields = {
-      'Name': name, 'Company': company||undefined, 'Role': role||undefined,
-      'Phone': phone||undefined, 'Email': email||undefined, 'Notes': notes||undefined,
-      'Linked Property': propId?[{id:propId}]:undefined,
-      'Linked Deal': dealId?[{id:dealId}]:undefined,
-      'Linked Listing': listId?[{id:listId}]:undefined,
+      'First Name': firstName || undefined,
+      'Last Name': lastName || undefined,
+      'Company': company || undefined,
+      'Title': title || undefined,
+      'Role': role ? [role] : undefined,
+      'Phone': phone || undefined,
+      'Email': email || undefined,
+      'Notes': notes || undefined,
+      ...(propId ? { 'Linked Property': [{ id: propId }] } : {}),
+      ...(dealId ? { 'Linked Deal': [{ id: dealId }] } : {}),
+      ...(listId ? { 'Linked Listing': [{ id: listId }] } : {}),
     }
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
-    if (editing) await apiUpdate('conts', data.id, clean)
-    else await apiCreate('conts', clean)
-    setSaving(false); onSave()
+    try {
+      if (editing) await apiUpdate('conts', data.id, clean)
+      else await apiCreate('conts', clean)
+      setSaving(false); onSave()
+    } catch(err) { setSaving(false); alert('Save failed: ' + err.message) }
   }
 
   return (
     <div>
-      <div style={fgrp}><label style={flbl}>Name *</label><input style={inp} value={name} onChange={e=>setName(e.target.value)} /></div>
+      <div style={row2}>
+        <div style={fgrp}><label style={flbl}>First Name *</label><input style={inp} value={firstName} onChange={e=>setFirstName(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Last Name</label><input style={inp} value={lastName} onChange={e=>setLastName(e.target.value)} /></div>
+      </div>
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Company</label><input style={inp} value={company} onChange={e=>setCompany(e.target.value)} /></div>
-        <div style={fgrp}><label style={flbl}>Role</label><select style={inp} value={role} onChange={e=>setRole(e.target.value)}><option value="">Select...</option>{['Owner','Landlord','Broker','Attorney','Tenant Rep','Property Manager','Other'].map(r=><option key={r}>{r}</option>)}</select></div>
+        <div style={fgrp}><label style={flbl}>Title</label><input style={inp} value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. VP Real Estate" /></div>
       </div>
       <div style={row2}>
+        <div style={fgrp}><label style={flbl}>Role</label><select style={inp} value={role} onChange={e=>setRole(e.target.value)}><option value="">Select...</option>{['Owner','Landlord','Broker','Attorney','Tenant Rep','Property Manager','Other'].map(r=><option key={r}>{r}</option>)}</select></div>
         <div style={fgrp}><label style={flbl}>Phone</label><input style={inp} value={phone} onChange={e=>setPhone(e.target.value)} /></div>
-        <div style={fgrp}><label style={flbl}>Email</label><input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} /></div>
       </div>
-      <SearchInput label="Linked Property" records={props} nameField="Address" subField="City" onSelect={setPropId} placeholder="Search property..." />
-      <SearchInput label="Linked Deal" records={deals} nameField="Deal Name" subField={F.deals.stage} onSelect={setDealId} placeholder="Search deals..." />
-      <SearchInput label="Linked Listing" records={lists} nameField="Listing Name" subField={F.deals.stage} onSelect={setListId} placeholder="Search listings..." />
+      <div style={fgrp}><label style={flbl}>Email</label><input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} /></div>
+      <SearchInput label="Linked Property" records={props} nameField={F.props.addr} subField={F.props.city} onSelect={setPropId} placeholder="Search property..." />
+      <SearchInput label="Linked Deal" records={deals} nameField={F.deals.name} subField={F.deals.stage} onSelect={setDealId} placeholder="Search deals..." />
+      <SearchInput label="Linked Listing" records={lists} nameField={F.lists.name} subField={F.lists.status} onSelect={setListId} placeholder="Search listings..." />
       <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{...inp, minHeight:'60px', resize:'vertical'}} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
       <div style={{display:'flex', gap:'8px', justifyContent:'flex-end', marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #e2dcc8'}}>
         <button style={btnSecondary} onClick={onCancel}>Cancel</button>
