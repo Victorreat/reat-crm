@@ -5,40 +5,47 @@ import React, { useState, useEffect, useCallback } from 'react'
 // ─── Field Names (Airtable REST API returns field names not IDs) ───────────────
 const F = {
   props: {
-    addr:'Address', city:'City', state:'State',
-    zip:'Zip', market:'Market', type:'Property Type',
-    acreage:'Acreage', sf:'Building SF', zoning:'Zoning',
-    status:'Prospecting Status', tags:'Tags', entity:'Ownership Entity',
-    ownerName:'Owner Name', ownerPhone:'Owner Phone', ownerEmail:'Owner Email',
-    notes:'Notes',
+    addr:'Address', city:'City', state:'State', zip:'Zip',
+    attrs:'Property Attributes', acreage:'Acreage', sf:'Building SF', zoning:'Zoning',
+    status:'Prospecting Status', source:'Property Source', tags:'Tags',
+    entity:'Ownership Entity', ownerName:'Owner Name', ownerPhone:'Owner Phone', ownerEmail:'Owner Email',
+    confirmed:'Contact Confirmed', attempts:'Outreach Attempts',
+    firstOutreach:'First Outreach Date', lastOutreach:'Last Outreach Date',
+    driveFolder:'Drive Folder', notes:'Notes',
+    listings:'Listings', deals:'Deals', contacts:'Contacts', acts:'Activties',
   },
   lists: {
-    name:'Listing Name', notes:'Notes', market:'Market',
-    status:'Listing Status', structure:'Deal Structure', price:'Asking Price',
+    name:'Listing Name', notes:'Notes',
+    status:'Listing Status', type:'Listing Type', price:'Asking Price',
     rate:'Asking Rate', commRate:'Commission Rate', estComm:'Est. Commission',
     agreeDate:'Listing Agreement Date', expDate:'Listing Expiration Date',
     coListBroker:'Co-List Broker', coListFee:'Co-List Fee',
-    offerStatus:'Offer Status', buyerTenant:'Buyer / Tenant', rate:'Asking Rate',
-    prop:'Property'
+    offerStatus:'Offer Status', buyerTenant:'Buyer / Tenant',
+    driveFolder:'Drive Folder', prop:'Property',
+    contacts:'Contacts', acts:'Activities', deals:'Deals',
   },
   deals: {
-    name:'Deal Name', notes:'Notes', tenant:'Tenant / Client',
-    brokerage:'Brokerage', market:'Market', stage:'Deal Stage',
-    structure:'Deal Structure', value:'Deal Value', commRate:'Commission Rate',
-    estComm:'Est. Commission', ca:'Commission Agreement Executed', landlordEntity:'Landlord Entity',
-    landlordContact:'Landlord Contact', prop:'Property', closeDate:'Projected Close Date',
-    linkedListing:'Linked Listing'
+    name:'Deal Name', notes:'Notes',
+    type:'Deal Type', clientName:'Client Name', clientEntity:'Client Entity',
+    stage:'Deal Stage', structure:'Deal Structure', value:'Deal Value',
+    commRate:'Commission Rate', estComm:'Est. Commission', referralFee:'Referral Fee',
+    ca:'Commission Agreement Executed', agencyDisclosure:'Agency Disclosure Executed',
+    buyerTenant:'Buyer/Tenant', counterpart:'Counterpart Contact',
+    driveFolder:'Drive Folder', prop:'Property', contacts:'Contacts',
+    acts:'Activities', closeDate:'Projected Close Date', linkedListing:'Linked Listing',
   },
   conts: {
-    name:'Name', notes:'Notes', company:'Company',
-    role:'Role', phone:'Phone', email:'Email',
-    linkedProp:'Linked Property', linkedListing:'Linked Listing', linkedDeal:'Linked Deal'
+    firstName:'First Name', lastName:'Last Name', company:'Company', title:'Title',
+    role:'Role', phone:'Phone', email:'Email', lastContacted:'Last Contacted',
+    linkedProp:'Linked Property', linkedListing:'Linked Listing', linkedDeal:'Linked Deal',
+    acts:'Activities', notes:'Notes',
   },
   acts: {
     desc:'Activity', notes:'Notes', date:'Date',
     type:'Type', outcome:'Outcome', fuDate:'Follow-Up Date',
-    fuAction:'Follow-Up Action', fuDone:'Follow-Up Done', linkedProp:'Linked Property',
-    linkedListing:'Linked Listing', linkedDeal:'Linked Deal', linkedContact:'Linked Contact'
+    fuAction:'Follow-Up Action', fuDone:'Follow-Up Done',
+    linkedProp:'Linked Property', linkedListing:'Linked Listing',
+    linkedDeal:'Linked Deal', linkedContact:'Linked Contact',
   }
 }
 
@@ -176,11 +183,9 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
   const [tenant, setTenant] = useState(gs(F.deals.clientName))
   const [stage, setStage] = useState(gs(F.deals.stage) || 'Target Identified')
   const [structure, setStructure] = useState(gs(F.deals.structure))
-  const [market, setMarket] = useState(gs(F.deals.market))
+  const [agencyDisclosure, setAgencyDisclosure] = useState(!!g(F.deals.agencyDisclosure))
   const [commRate, setCommRate] = useState(g(F.deals.commRate) ? (g(F.deals.commRate)*100).toFixed(2) : '')
   const [closeDate, setCloseDate] = useState(gs(F.deals.closeDate))
-  const [landlordEntity, setLandlordEntity] = useState(gs(F.deals.landlordEntity))
-  const [landlordContact, setLandlordContact] = useState(gs(F.deals.landlordContact))
   const [ca, setCa] = useState(!!g(F.deals.ca))
   const [notes, setNotes] = useState(g(F.deals.notes) || '')
   const [propId, setPropId] = useState(null)
@@ -218,8 +223,6 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
       'Commission Rate': commRateN ? commRateN / 100 : (editing ? g(F.deals.commRate) : undefined),
       'Est. Commission': estComm || (editing ? g(F.deals.estComm) : undefined),
       'Projected Close Date': closeDate || undefined,
-      'Landlord Entity': landlordEntity || undefined,
-      'Landlord Contact': landlordContact || undefined,
       'Commission Agreement Executed': ca,
       'Notes': notes || undefined,
       'Property': propId ? [{ id: propId }] : undefined,
@@ -293,8 +296,8 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
       </div>
       {estComm > 0 && <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:"8px", padding:"10px 14px", marginBottom:"10px" }}><span style={{ fontSize: '12px', color: '#316828', fontWeight: 500 }}>Est. Commission</span><span style={{ fontSize: '18px', fontWeight: 700, color: '#316828' }}>{fmt$(estComm)}</span></div>}
       <div style={row2}>
-        <div style={fgrp}><label style={flbl}>Landlord Entity</label><input style={inp} value={landlordEntity} onChange={e=>setLandlordEntity(e.target.value)} /></div>
-        <div style={fgrp}><label style={flbl}>Landlord Contact</label><input style={inp} value={landlordContact} onChange={e=>setLandlordContact(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Buyer / Tenant</label><input style={inp} value={buyerTenant} onChange={e=>setBuyerTenant(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Counterpart Contact</label><input style={inp} value={counterpart} onChange={e=>setCounterpart(e.target.value)} /></div>
       </div>
       <div style={fgrp}><label style={flbl}>CA Executed</label><div style={{ paddingTop: '6px' }}><input type="checkbox" checked={ca} onChange={e=>setCa(e.target.checked)} style={{ marginRight: '6px' }} /><span style={{ fontSize: '13px' }}>CA Signed</span></div></div>
       <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{ ...inp, minHeight: '70px', resize: 'vertical' }} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
@@ -530,10 +533,10 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
           <div style={secTitle}>Deal Details</div>
           <DetailRow label="Tenant / Client" value={fv(f, F.deals.clientName)} />
           <DetailRow label="Structure" value={fv(f, F.deals.structure)} />
-          <DetailRow label="Market" value={fv(f, F.deals.market)} />
+          <DetailRow label="Deal Type" value={fv(f, F.deals.type)} />
           <DetailRow label="CA Executed" value={f[F.deals.ca] ? '✓ Yes' : 'No'} />
-          <DetailRow label="Landlord Entity" value={fv(f, F.deals.landlordEntity)} />
-          <DetailRow label="Landlord Contact" value={fv(f, F.deals.landlordContact)} />
+          <DetailRow label="Client Entity" value={fv(f, F.deals.clientEntity)} />
+          <DetailRow label="Counterpart" value={fv(f, F.deals.counterpart)} />
           {f[F.deals.notes] && <div style={{ marginTop: '10px' }}><div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500, marginBottom: '4px' }}>Notes</div><div style={{ fontSize: '13px', whiteSpace: 'pre-wrap' }}>{f[F.deals.notes]}</div></div>}
         </div>
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
@@ -770,7 +773,7 @@ function TenantDashboard({ tenant, allData, onBack, onRefresh }) {
               <td style={td}><div style={{ fontWeight: 500 }}>{fv(d.fields, F.deals.name)}</div></td>
               <td style={td}><Badge value={d.fields[F.deals.stage]} /></td>
               <td style={{ ...td, color: '#6b7280' }}>{fv(d.fields, F.deals.structure)}</td>
-              <td style={{ ...td, color: '#6b7280' }}>{fv(d.fields, F.deals.market)}</td>
+              <td style={{ ...td, color: '#6b7280' }}>{fv(d.fields, F.deals.type)||'—'}</td>
               <td style={{ ...td, color: '#c69425', fontWeight: 600 }}>{fmt$(d.fields[F.deals.estComm])}</td>
               <td style={{ ...td, color: '#6b7280' }}>{fv(d.fields, F.deals.closeDate)}</td>
               <td style={td}>{d.fields[F.deals.ca] ? <span style={{ color: '#316828', fontWeight: 700 }}>✓</span> : '—'}</td>
