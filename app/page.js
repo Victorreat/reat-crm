@@ -180,9 +180,14 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
   const gs = f => data ? (fv(data.fields, f) || '') : ''
 
   const [name, setName] = useState(gs(F.deals.name))
-  const [tenant, setTenant] = useState(gs(F.deals.clientName))
+  const [dealType, setDealType] = useState(gs(F.deals.type))
+  const [clientName, setClientName] = useState(gs(F.deals.clientName))
+  const [clientEntity, setClientEntity] = useState(gs(F.deals.clientEntity))
   const [stage, setStage] = useState(gs(F.deals.stage) || 'Target Identified')
   const [structure, setStructure] = useState(gs(F.deals.structure))
+  const [buyerTenant, setBuyerTenant] = useState(gs(F.deals.buyerTenant))
+  const [counterpart, setCounterpart] = useState(gs(F.deals.counterpart))
+  const [referralFee, setReferralFee] = useState(g(F.deals.referralFee) || '')
   const [agencyDisclosure, setAgencyDisclosure] = useState(!!g(F.deals.agencyDisclosure))
   const [commRate, setCommRate] = useState(g(F.deals.commRate) ? (g(F.deals.commRate)*100).toFixed(2) : '')
   const [closeDate, setCloseDate] = useState(gs(F.deals.closeDate))
@@ -1234,7 +1239,6 @@ export default function CRM() {
 
   const VIEWS = [
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'prospecting', label: 'Prospecting', count: props.filter(p => !['Active','Dead'].includes(fv(p.fields,F.props.status))).length },
     { id: 'properties', label: 'Properties', count: props.length },
     { id: 'listings', label: 'Listings', count: lists.length },
     { id: 'deals', label: 'Deals', count: deals.length },
@@ -1252,7 +1256,7 @@ export default function CRM() {
     if (view === 'deals' && selected.deal) return <DealDetail deal={selected.deal} allData={allData} onBack={() => setSelected(s => ({...s, deal:null}))} onRefresh={onRefresh} />
     if (view === 'deals' && selected.tenant) return <TenantDashboard tenant={selected.tenant} allData={allData} onBack={() => setSelected(s => ({...s, tenant:null}))} onRefresh={onRefresh} />
     if (view === 'listings' && selected.listing) return <ListingDetail listing={selected.listing} allData={allData} onBack={() => setSelected(s => ({...s, listing:null}))} onRefresh={onRefresh} />
-    if ((view === 'properties' || view === 'prospecting') && selected.property) return <PropertyDetail property={selected.property} allData={allData} onBack={() => setSelected(s => ({...s, property:null}))} onRefresh={onRefresh} />
+    if (view === 'properties' && selected.property) return <PropertyDetail property={selected.property} allData={allData} onBack={() => setSelected(s => ({...s, property:null}))} onRefresh={onRefresh} />
     return null
   })()
 
@@ -1440,20 +1444,28 @@ export default function CRM() {
             )
           })()}
 
-          {/* Properties */}
-          {!detail && view === 'properties' && (
-            <div style={card}>
-              <table style={tbl}>
-                <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Type</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
-                <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}><td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td><td style={td}>{fv(r.fields,F.props.city)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(r.fields,F.props.attrs)||'—'}</td><td style={td}><Badge value={r.fields[F.props.status]} /></td><td style={td}>{r.fields[F.props.acreage]||'—'}</td><td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td></tr>)}</tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Prospecting */}
-          {!detail && view === 'prospecting' && (
-            <ProspectingPage allData={allData} onRefresh={onRefresh} onSelectProperty={p => setSelected(s => ({...s, property:p}))} />
-          )}
+          {/* Properties + Prospecting toggle */}
+          {!detail && view === 'properties' && (() => {
+            const [propMode, setPropMode] = React.useState('list')
+            return (
+              <div>
+                <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
+                  <button style={{ ...propMode==='list' ? btnPrimary : btnSecondary, fontSize:'12px', padding:'6px 14px' }} onClick={() => setPropMode('list')}>All Properties</button>
+                  <button style={{ ...propMode==='prospecting' ? btnPrimary : btnSecondary, fontSize:'12px', padding:'6px 14px' }} onClick={() => setPropMode('prospecting')}>📞 Prospecting Call Sheet</button>
+                </div>
+                {propMode === 'list' ? (
+                  <div style={card}>
+                    <table style={tbl}>
+                      <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Attributes</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
+                      <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => <tr key={r.id} style={{ cursor:'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}><td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td><td style={td}>{fv(r.fields,F.props.city)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(r.fields,F.props.attrs)||'—'}</td><td style={td}><Badge value={r.fields[F.props.status]} /></td><td style={td}>{r.fields[F.props.acreage]||'—'}</td><td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td></tr>)}</tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <ProspectingPage allData={allData} onRefresh={onRefresh} onSelectProperty={p => setSelected(s => ({...s, property:p}))} />
+                )}
+              </div>
+            )
+          })()}
 
           {/* Listings */}
           {!detail && view === 'listings' && (
