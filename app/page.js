@@ -160,6 +160,7 @@ const td = { padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #f
 const card = { background: '#fff', border: '1px solid #e2dcc8', borderRadius: '10px', overflow: 'hidden', marginBottom: '16px' }
 const secTitle = { fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }
 const computed = { background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px 12px', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }
+const btnSmall = { background: '#f5f2e8', color: '#374151', border: '1px solid #e2dcc8', borderRadius: '5px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }
 
 const calcTotalRent = (base, term, incType, incAmt, incInt) => {
   let total = 0, cur = base
@@ -255,11 +256,16 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
       <SearchInput label="Linked Listing" records={lists} nameField={F.lists.name} subField={F.lists.name} onSelect={setListId} placeholder="Search listings..." />
       <div style={fgrp}><label style={flbl}>Deal Name *</label><input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. 7 Brew – Medina" /></div>
       <div style={row2}>
-        <div style={fgrp}><label style={flbl}>Tenant / Client</label><input style={inp} value={tenant} onChange={e=>setTenant(e.target.value)} list="tenants" /><datalist id="tenants"><option>7 Brew</option><option>Cricket Wireless</option><option>Portillo's</option><option>Biggby Coffee</option></datalist></div>
+        <div style={fgrp}><label style={flbl}>Deal Type</label><select style={inp} value={dealType} onChange={e=>setDealType(e.target.value)}><option value="">Select...</option>{['Tenant Rep','Listing Rep','Dual Agency','Referral','Referee'].map(t=><option key={t}>{t}</option>)}</select></div>
         <div style={fgrp}><label style={flbl}>Stage</label><select style={inp} value={stage} onChange={e=>setStage(e.target.value)}>{['Target Identified','Outreach','LOI Prepared','LOI Submitted','LOI Accepted','Lease Negotiation','Lease Draft','PSA Negotiation','PSA Draft','Executed','Dead'].map(s=><option key={s}>{s}</option>)}</select></div>
       </div>
       <div style={row2}>
+        <div style={fgrp}><label style={flbl}>Client Name</label><input style={inp} value={clientName} onChange={e=>setClientName(e.target.value)} list="clients" /><datalist id="clients"><option>7 Brew</option><option>Cricket Wireless</option><option>Portillo's</option><option>Biggby Coffee</option></datalist></div>
+        <div style={fgrp}><label style={flbl}>Client Entity</label><input style={inp} value={clientEntity} onChange={e=>setClientEntity(e.target.value)} /></div>
+      </div>
+      <div style={row2}>
         <div style={fgrp}><label style={flbl}>Structure</label><select style={inp} value={structure} onChange={e=>setStructure(e.target.value)}><option value="">Select...</option><option>Lease</option><option>Ground Lease</option><option>Purchase</option></select></div>
+        <div style={fgrp}><label style={flbl}>Referral Fee $</label><input style={inp} type="number" value={referralFee} onChange={e=>setReferralFee(e.target.value)} /></div>
       </div>
 
       {structure === 'Lease' && (
@@ -1237,13 +1243,17 @@ export default function CRM() {
   const activeListings = lists.filter(l => fv(l.fields, F.lists.status) === 'Active').length
   const fueDue = acts.filter(a => { const fd = a.fields[F.acts.fuDate]; return fd && !a.fields[F.acts.fuDone] && new Date(fd) <= new Date() }).length
 
+  const overdueCount = acts.filter(a => { const fd = a.fields[F.acts.fuDate]; return fd && !a.fields[F.acts.fuDone] && new Date(fd) <= new Date() }).length
+  const prospectingCount = props.filter(p => !['Active','Dead'].includes(fv(p.fields,F.props.status))).length
+
   const VIEWS = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'properties', label: 'Properties', count: props.length },
     { id: 'listings', label: 'Listings', count: lists.length },
     { id: 'deals', label: 'Deals', count: deals.length },
     { id: 'contacts', label: 'Contacts', count: conts.length },
-    { id: 'activities', label: 'Activity', count: acts.length },
+    { id: 'activities', label: 'Activity / GTD', count: overdueCount || undefined, countRed: !!overdueCount },
+    { id: 'prospecting', label: '📞 Prospecting', count: prospectingCount },
     { id: 'calendar', label: 'Commission Cal.' },
   ]
 
@@ -1272,7 +1282,7 @@ export default function CRM() {
           {VIEWS.map(v => (
             <div key={v.id} onClick={() => setView2(v.id)} style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, borderLeft: view === v.id ? '3px solid #c69425' : '3px solid transparent', background: view === v.id ? '#f9f7f0' : 'transparent', color: view === v.id ? '#316828' : '#6b7280' }}>
               {v.label}
-              {v.count !== undefined && <span style={{ marginLeft: 'auto', background: view === v.id ? '#f0edd8' : '#f5f2e8', color: view === v.id ? '#316828' : '#9ca3af', fontSize: '11px', padding: '1px 7px', borderRadius: '10px' }}>{v.count}</span>}
+              {v.count !== undefined && <span style={{ marginLeft: 'auto', background: v.countRed ? '#fee2e2' : view === v.id ? '#f0edd8' : '#f5f2e8', color: v.countRed ? '#dc2626' : view === v.id ? '#316828' : '#9ca3af', fontSize: '11px', padding: '1px 7px', borderRadius: '10px', fontWeight: v.countRed ? 700 : 500 }}>{v.count}</span>}
             </div>
           ))}
         </nav>
@@ -1444,28 +1454,15 @@ export default function CRM() {
             )
           })()}
 
-          {/* Properties + Prospecting toggle */}
-          {!detail && view === 'properties' && (() => {
-            const [propMode, setPropMode] = React.useState('list')
-            return (
-              <div>
-                <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                  <button style={{ ...propMode==='list' ? btnPrimary : btnSecondary, fontSize:'12px', padding:'6px 14px' }} onClick={() => setPropMode('list')}>All Properties</button>
-                  <button style={{ ...propMode==='prospecting' ? btnPrimary : btnSecondary, fontSize:'12px', padding:'6px 14px' }} onClick={() => setPropMode('prospecting')}>📞 Prospecting Call Sheet</button>
-                </div>
-                {propMode === 'list' ? (
-                  <div style={card}>
-                    <table style={tbl}>
-                      <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Attributes</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
-                      <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => <tr key={r.id} style={{ cursor:'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}><td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td><td style={td}>{fv(r.fields,F.props.city)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(r.fields,F.props.attrs)||'—'}</td><td style={td}><Badge value={r.fields[F.props.status]} /></td><td style={td}>{r.fields[F.props.acreage]||'—'}</td><td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td></tr>)}</tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <ProspectingPage allData={allData} onRefresh={onRefresh} onSelectProperty={p => setSelected(s => ({...s, property:p}))} />
-                )}
-              </div>
-            )
-          })()}
+          {/* Properties */}
+          {!detail && view === 'properties' && (
+            <div style={card}>
+              <table style={tbl}>
+                <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Attributes</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
+                <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => <tr key={r.id} style={{ cursor:'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}><td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td><td style={td}>{fv(r.fields,F.props.city)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(r.fields,F.props.attrs)||'—'}</td><td style={td}><Badge value={r.fields[F.props.status]} /></td><td style={td}>{r.fields[F.props.acreage]||'—'}</td><td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td></tr>)}</tbody>
+              </table>
+            </div>
+          )}
 
           {/* Listings */}
           {!detail && view === 'listings' && (
@@ -1519,63 +1516,154 @@ export default function CRM() {
           {/* Activity / GTD */}
           {!detail && view === 'activities' && (() => {
             const now = new Date()
-            const today = now.toDateString()
-            
-            // GTD buckets
-            const overdueFU = acts.filter(a => {
-              const fd = a.fields['Follow-Up Date']
-              return fd && !a.fields['Follow-Up Done'] && new Date(fd) < now && new Date(fd).toDateString() !== today
+            const todayStr = now.toDateString()
+            const [actTab, setActTab] = React.useState('capture')
+            const [captureText, setCaptureText] = React.useState('')
+            const [captureType, setCaptureType] = React.useState('Note')
+            const [captureSaving, setCaptureSaving] = React.useState(false)
+
+            const handleCapture = async () => {
+              if (!captureText.trim()) return
+              setCaptureSaving(true)
+              try {
+                await apiCreate('acts', {
+                  'Activity': captureText.trim(),
+                  'Type': captureType,
+                  'Date': now.toISOString().split('T')[0],
+                })
+                setCaptureText('')
+                await onRefresh()
+              } catch(e) { alert('Error: ' + e.message) }
+              setCaptureSaving(false)
+            }
+
+            const overdue = acts.filter(a => {
+              const fd = a.fields[F.acts.fuDate]
+              return fd && !a.fields[F.acts.fuDone] && new Date(fd) < now && new Date(fd).toDateString() !== todayStr
             })
-            const dueTodayFU = acts.filter(a => {
-              const fd = a.fields['Follow-Up Date']
-              return fd && !a.fields['Follow-Up Done'] && new Date(fd).toDateString() === today
+            const dueToday = acts.filter(a => {
+              const fd = a.fields[F.acts.fuDate]
+              return fd && !a.fields[F.acts.fuDone] && new Date(fd).toDateString() === todayStr
             })
             const upcoming = acts.filter(a => {
-              const fd = a.fields['Follow-Up Date']
-              return fd && !a.fields['Follow-Up Done'] && new Date(fd) > now && new Date(fd).toDateString() !== today
-            }).sort((a,b) => (a.fields['Follow-Up Date']||'').localeCompare(b.fields['Follow-Up Date']||''))
-            const waitingFor = acts.filter(a => fv(a.fields,'Type') === 'Waiting For')
-            const recent = [...acts].sort((a,b) => (b.fields['Date']||'').localeCompare(a.fields['Date']||'')).slice(0,20)
+              const fd = a.fields[F.acts.fuDate]
+              return fd && !a.fields[F.acts.fuDone] && new Date(fd) > now && new Date(fd).toDateString() !== todayStr
+            }).sort((a,b) => (a.fields[F.acts.fuDate]||'').localeCompare(b.fields[F.acts.fuDate]||''))
+            const waitingFor = acts.filter(a => fv(a.fields, F.acts.type) === 'Waiting For')
+            const recent = [...acts].sort((a,b) => (b.fields[F.acts.date]||'').localeCompare(a.fields[F.acts.date]||'')).slice(0,25)
 
-            const GTDSection = ({title, color, items, emptyMsg}) => (
-              <div style={{marginBottom:'18px'}}>
-                <div style={{fontSize:'12px', fontWeight:700, color:color||'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>{title} ({items.length})</div>
+            const ActSection = ({title, color, items, emptyMsg}) => (
+              <div style={{marginBottom:'20px'}}>
+                <div style={{fontSize:'12px', fontWeight:700, color:color||'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>{title} <span style={{fontWeight:400}}>({items.length})</span></div>
                 {items.length ? (
                   <div style={card}>
                     <table style={tbl}>
-                      <thead><tr><th style={th}>Activity</th><th style={th}>Type</th><th style={th}>Follow-Up</th><th style={th}>Action</th><th style={th}>Linked To</th></tr></thead>
-                      <tbody>{items.map(a => (
-                        <tr key={a.id}>
-                          <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,'Activity')||'—'}</div>{a.fields['Notes']&&<div style={{fontSize:'11px',color:'#9ca3af'}}>{a.fields['Notes']}</div>}</td>
-                          <td style={{...td,color:'#6b7280'}}>{fv(a.fields,'Type')||'—'}</td>
-                          <td style={{...td,color:color||'#6b7280',fontWeight:600}}>{fv(a.fields,'Follow-Up Date')||'—'}</td>
-                          <td style={{...td,color:'#6b7280'}}>{fv(a.fields,'Follow-Up Action')||'—'}</td>
-                          <td style={{...td,color:'#6b7280',fontSize:'11px'}}>
-                            {(a.fields['Linked Deal']||[]).length>0?'Deal':''}{(a.fields['Linked Property']||[]).length>0?'Property':''}{(a.fields['Linked Listing']||[]).length>0?'Listing':''}
-                          </td>
-                        </tr>
-                      ))}</tbody>
+                      <thead><tr><th style={th}>Activity</th><th style={th}>Type</th><th style={th}>Follow-Up Date</th><th style={th}>Action Needed</th><th style={th}>Linked To</th></tr></thead>
+                      <tbody>{items.map(a => {
+                        const linkedDeal = linked(a.fields, F.acts.linkedDeal)[0]
+                        const linkedProp = linked(a.fields, F.acts.linkedProp)[0]
+                        const linkedList = linked(a.fields, F.acts.linkedListing)[0]
+                        const linkLabel = linkedDeal ? '🤝 Deal' : linkedProp ? '🏠 Property' : linkedList ? '📋 Listing' : '—'
+                        return (
+                          <tr key={a.id} style={{background: overdue.includes(a) ? '#fff9f9' : '#fff'}}>
+                            <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div>{a.fields[F.acts.notes]&&<div style={{fontSize:'11px',color:'#9ca3af',marginTop:'2px'}}>{a.fields[F.acts.notes]}</div>}</td>
+                            <td style={{...td,color:'#6b7280'}}>{fv(a.fields,F.acts.type)||'—'}</td>
+                            <td style={{...td,color:color||'#6b7280',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)||'—'}</td>
+                            <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
+                            <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linkLabel}</td>
+                          </tr>
+                        )
+                      })}</tbody>
                     </table>
                   </div>
-                ) : <div style={{color:'#9ca3af',fontSize:'13px',padding:'8px 0'}}>{emptyMsg}</div>}
+                ) : <div style={{color:'#9ca3af',fontSize:'13px',padding:'8px 0',marginBottom:'8px'}}>{emptyMsg}</div>}
               </div>
             )
 
+            const TABS = [
+              { id: 'capture', label: '⚡ Capture' },
+              { id: 'today', label: `🟡 Today (${dueToday.length})` },
+              { id: 'overdue', label: `🔴 Overdue (${overdue.length})`, red: overdue.length > 0 },
+              { id: 'upcoming', label: `🟢 Upcoming (${upcoming.length})` },
+              { id: 'waiting', label: `⏳ Waiting (${waitingFor.length})` },
+              { id: 'log', label: 'All Activity' },
+            ]
+
             return (
               <div>
-                <GTDSection title="🔴 Overdue" color="#dc2626" items={overdueFU} emptyMsg="Nothing overdue" />
-                <GTDSection title="🟡 Due Today" color="#c69425" items={dueTodayFU} emptyMsg="Nothing due today" />
-                <GTDSection title="🟢 Upcoming Follow-Ups" color="#316828" items={upcoming} emptyMsg="No upcoming follow-ups" />
-                <GTDSection title="⏳ Waiting For" color="#7c3aed" items={waitingFor} emptyMsg="Nothing waiting" />
-                <div style={{marginBottom:'18px'}}>
-                  <div style={{fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Recent Activity Log</div>
-                  <ActsTable acts={recent} />
+                {/* Tab bar */}
+                <div style={{display:'flex', gap:'6px', marginBottom:'16px', flexWrap:'wrap'}}>
+                  {TABS.map(t => (
+                    <button key={t.id} onClick={() => setActTab(t.id)} style={{
+                      ...actTab===t.id ? btnPrimary : btnSecondary,
+                      fontSize:'12px', padding:'6px 12px',
+                      ...(t.red && actTab !== t.id ? {borderColor:'#dc2626',color:'#dc2626'} : {})
+                    }}>{t.label}</button>
+                  ))}
                 </div>
+
+                {/* CAPTURE */}
+                {actTab === 'capture' && (
+                  <div>
+                    <div style={{...card, padding:'16px', marginBottom:'16px'}}>
+                      <div style={{fontSize:'13px', fontWeight:700, marginBottom:'10px'}}>Quick Capture</div>
+                      <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'10px'}}>Drop anything here — call notes, ideas, tasks, follow-ups. Link it later.</div>
+                      <textarea
+                        style={{...inp, minHeight:'80px', resize:'vertical', marginBottom:'8px'}}
+                        placeholder="e.g. Called Bob at 7 Brew re: Strongsville site — said they're looking at 3 more Ohio markets..."
+                        value={captureText}
+                        onChange={e => setCaptureText(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleCapture() }}
+                      />
+                      <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                        <select style={{...inp, maxWidth:'140px'}} value={captureType} onChange={e => setCaptureType(e.target.value)}>
+                          {['Note','Call','Email','Meeting','Task','Site Visit','LOI','Lease','Other'].map(t => <option key={t}>{t}</option>)}
+                        </select>
+                        <button style={{...btnPrimary, opacity: captureSaving ? 0.6 : 1}} onClick={handleCapture} disabled={captureSaving}>
+                          {captureSaving ? 'Saving...' : '⚡ Capture (⌘↵)'}
+                        </button>
+                        <span style={{fontSize:'11px', color:'#9ca3af'}}>or use + Add for full detail</span>
+                      </div>
+                    </div>
+                    {/* Show recent unlinked items to process */}
+                    <div style={{fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Recently Captured (unlinked)</div>
+                    <ActsTable acts={recent.filter(a =>
+                      !linked(a.fields,F.acts.linkedDeal).length &&
+                      !linked(a.fields,F.acts.linkedProp).length &&
+                      !linked(a.fields,F.acts.linkedListing).length
+                    ).slice(0,10)} />
+                  </div>
+                )}
+
+                {/* TODAY */}
+                {actTab === 'today' && <ActSection title="🟡 Due Today" color="#c69425" items={dueToday} emptyMsg="Nothing due today — you're clear." />}
+
+                {/* OVERDUE */}
+                {actTab === 'overdue' && <ActSection title="🔴 Overdue Follow-Ups" color="#dc2626" items={overdue} emptyMsg="Nothing overdue. Nice." />}
+
+                {/* UPCOMING */}
+                {actTab === 'upcoming' && <ActSection title="🟢 Upcoming Follow-Ups" color="#316828" items={upcoming} emptyMsg="No upcoming follow-ups scheduled." />}
+
+                {/* WAITING FOR */}
+                {actTab === 'waiting' && <ActSection title="⏳ Waiting For" color="#7c3aed" items={waitingFor} emptyMsg="Nothing in waiting. Log items with Type = Waiting For." />}
+
+                {/* ALL LOG */}
+                {actTab === 'log' && (
+                  <div>
+                    <div style={{fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Last 25 Activities</div>
+                    <ActsTable acts={recent} />
+                  </div>
+                )}
               </div>
             )
           })()}
 
-          {/* Calendar */}
+          {/* Prospecting */}
+          {!detail && view === 'prospecting' && (
+            <ProspectingPage allData={allData} onRefresh={onRefresh} onSelectProperty={p => setSelected(s => ({...s, property:p}))} />
+          )}
+
+                    {/* Calendar */}
           {!detail && view === 'calendar' && (() => {
             const months = []
             const now = new Date()
