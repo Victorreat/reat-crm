@@ -985,6 +985,7 @@ export default function CRM() {
 
   const VIEWS = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'prospecting', label: 'Prospecting', count: props.filter(p => !['Active','Dead'].includes(fv(p.fields,F.props.status))).length },
     { id: 'properties', label: 'Properties', count: props.length },
     { id: 'listings', label: 'Listings', count: lists.length },
     { id: 'deals', label: 'Deals', count: deals.length },
@@ -1022,8 +1023,9 @@ export default function CRM() {
             </div>
           ))}
         </nav>
-        <div style={{ padding: '12px', borderTop: '1px solid #e2dcc8' }}>
-          <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>{user?.firstName} {user?.lastName}</div>
+        <div style={{ padding: '12px 8px', borderTop: '1px solid #e2dcc8' }}>
+          <button style={{ ...btnPrimary, width: '100%', textAlign: 'center', marginBottom: '10px', padding: '10px' }} onClick={() => setModal('quickadd')}>+ Add</button>
+          <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px', paddingLeft: '4px' }}>{user?.firstName} {user?.lastName}</div>
           <UserButton afterSignOutUrl="/sign-in" />
         </div>
       </div>
@@ -1034,7 +1036,6 @@ export default function CRM() {
         <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2dcc8', display: 'flex', alignItems: 'center', gap: '12px', background: '#fff' }}>
           <div style={{ fontSize: '15px', fontWeight: 700 }}>{detail ? '' : VIEWS.find(v=>v.id===view)?.label}</div>
           <input style={{ marginLeft: 'auto', background: '#faf8f0', border: '1px solid #e2dcc8', borderRadius: '6px', padding: '6px 12px', fontSize: '13px', width: '200px', outline: 'none' }} placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
-          <button style={btnPrimary} onClick={() => setModal('quickadd')}>+ Add</button>
         </div>
 
         {/* Content */}
@@ -1219,18 +1220,17 @@ export default function CRM() {
           {!detail && view === 'deals' && (
             <div>
               <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>All Deals</div>
-              {[...tenants, '__unassigned__'].map(tenant => {
-                const tDeals = tenant === '__unassigned__'
-                  ? deals.filter(d => !fv(d.fields, F.deals.clientName))
-                  : deals.filter(d => fv(d.fields, F.deals.clientName) === tenant)
-                if (!tDeals.length) return null
-                const displayName = tenant === '__unassigned__' ? 'Unassigned / Other' : tenant
+              {(() => {
+                const groups = [...tenants.map(t => ({ key: t, label: t, deals: deals.filter(d => fv(d.fields, F.deals.clientName) === t) })),
+                  { key: '__other__', label: 'Other / Unassigned', deals: deals.filter(d => !fv(d.fields, F.deals.clientName)) }
+                ].filter(g => g.deals.length > 0)
+                return groups.map(({ key, label, deals: tDeals }) => {
                 const tActive = tDeals.filter(d => !['Executed','Dead'].includes(fv(d.fields, F.deals.stage)))
                 const tPipe = tActive.reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
                 return (
-                  <div key={tenant} style={{ marginBottom: '20px' }}>
+                  <div key={key} style={{ marginBottom: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#316828', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: '#c69425' }} onClick={() => tenant !== '__unassigned__' && setSelected(s => ({...s, tenant}))}>{displayName}</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#316828', cursor: key !== '__other__' ? 'pointer' : 'default', textDecoration: key !== '__other__' ? 'underline' : 'none', textDecorationColor: '#c69425' }} onClick={() => key !== '__other__' && setSelected(s => ({...s, tenant: key}))}>{label}</div>
                       <span style={{ fontSize: '12px', color: '#9ca3af' }}>{tActive.length} active · {fmt$(tPipe)}</span>
                     </div>
                     <div style={card}>
@@ -1241,7 +1241,7 @@ export default function CRM() {
                     </div>
                   </div>
                 )
-              })}
+              })})()}
             </div>
           )}
 
