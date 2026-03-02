@@ -16,8 +16,9 @@ const F = {
     name:'Listing Name', notes:'Notes', market:'Market',
     status:'Listing Status', structure:'Deal Structure', price:'Asking Price',
     rate:'Asking Rate', commRate:'Commission Rate', estComm:'Est. Commission',
-    listDate:'Listing Date', expDate:'Expiration Date', coBroker:'Co-Broker',
-    offer:'Current Offer / LOI', offerStatus:'Offer Status', buyerTenant:'Buyer / Tenant',
+    agreeDate:'Listing Agreement Date', expDate:'Listing Expiration Date',
+    coListBroker:'Co-List Broker', coListFee:'Co-List Fee',
+    offerStatus:'Offer Status', buyerTenant:'Buyer / Tenant', rate:'Asking Rate',
     prop:'Property'
   },
   deals: {
@@ -290,7 +291,7 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
         <div style={fgrp}><label style={flbl}>Commission Rate %</label><input style={inp} type="number" step="0.01" value={commRate} onChange={e=>setCommRate(e.target.value)} /></div>
         <div style={fgrp}><label style={flbl}>Projected Close Date</label><input style={inp} type="date" value={closeDate} onChange={e=>setCloseDate(e.target.value)} /></div>
       </div>
-      {estComm > 0 && <div style={computed}><span style={{ fontSize: '12px', color: '#316828', fontWeight: 500 }}>Est. Commission</span><span style={{ fontSize: '18px', fontWeight: 700, color: '#316828' }}>{fmt$(estComm)}</span></div>}
+      {estComm > 0 && <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:"8px", padding:"10px 14px", marginBottom:"10px" }}><span style={{ fontSize: '12px', color: '#316828', fontWeight: 500 }}>Est. Commission</span><span style={{ fontSize: '18px', fontWeight: 700, color: '#316828' }}>{fmt$(estComm)}</span></div>}
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Landlord Entity</label><input style={inp} value={landlordEntity} onChange={e=>setLandlordEntity(e.target.value)} /></div>
         <div style={fgrp}><label style={flbl}>Landlord Contact</label><input style={inp} value={landlordContact} onChange={e=>setLandlordContact(e.target.value)} /></div>
@@ -308,84 +309,90 @@ function DealForm({ data, props, lists, onSave, onCancel }) {
 // ─── Listing Form ─────────────────────────────────────────────────────────────
 function ListingForm({ data, props, onSave, onCancel }) {
   const editing = !!data
-  const g = f => data ? (data.fields[f] !== undefined ? data.fields[f] : '') : ''
-  const gs = f => data ? (fv(data.fields, f) || '') : ''
-  const [name, setName] = useState(gs(F.lists.name))
-  const [structure, setStructure] = useState(gs(F.lists.type))
-  const [status, setStatus] = useState(gs(F.lists.status) || 'Active')
+  const g = f => data?.fields?.[f] ?? ''
+  const [name, setName] = useState(g(F.lists.name))
+  const [type, setType] = useState(fv(data?.fields, F.lists.type) || '')
+  const [status, setStatus] = useState(fv(data?.fields, F.lists.status) || 'Active')
   const [price, setPrice] = useState(g(F.lists.price) || '')
+  const [rate, setRate] = useState(g(F.lists.rate) || '')
   const [commRate, setCommRate] = useState(g(F.lists.commRate) ? (g(F.lists.commRate)*100).toFixed(2) : '')
-  const [listDate, setListDate] = useState(gs(F.lists.listDate))
-  const [expDate, setExpDate] = useState(gs(F.lists.expDate))
-  const [coBroker, setCoBroker] = useState(gs(F.lists.coBroker))
-  const [offer, setOffer] = useState(gs(F.lists.offer))
-  const [offerStatus, setOfferStatus] = useState(gs(F.lists.offerStatus))
-  const [buyerTenant, setBuyerTenant] = useState(gs(F.lists.buyerTenant))
+  const [agreeDate, setAgreeDate] = useState(g(F.lists.agreeDate))
+  const [expDate, setExpDate] = useState(g(F.lists.expDate))
+  const [coListBroker, setCoListBroker] = useState(g(F.lists.coListBroker))
+  const [coListFee, setCoListFee] = useState(g(F.lists.coListFee) ? (g(F.lists.coListFee)*100).toFixed(2) : '')
+  const [offerStatus, setOfferStatus] = useState(fv(data?.fields, F.lists.offerStatus) || '')
+  const [buyerTenant, setBuyerTenant] = useState(g(F.lists.buyerTenant))
   const [notes, setNotes] = useState(g(F.lists.notes) || '')
   const [propId, setPropId] = useState(null)
   const [saving, setSaving] = useState(false)
-  const estComm = price && commRate ? parseFloat(price) * parseFloat(commRate) / 100 : 0
+  const estComm = price && commRate ? parseFloat(price) * parseFloat(commRate) / 100 : g(F.lists.estComm) || 0
+
   const handleSave = async () => {
     if (!name) return alert('Listing name required')
     setSaving(true)
-    const fields = {
-      'Listing Name': name,
-      'Deal Structure': structure || undefined,
-      'Listing Status': status,
-      'Asking Price': parseFloat(price) || undefined,
-      'Commission Rate': parseFloat(commRate) ? parseFloat(commRate)/100 : undefined,
-      'Est. Commission': estComm || undefined,
-      'Listing Date': listDate || undefined,
-      'Expiration Date': expDate || undefined,
-      'Co-Broker': coBroker || undefined,
-      'Current Offer / LOI': offer || undefined,
-      'Offer Status': offerStatus || undefined,
-      'Buyer / Tenant': buyerTenant || undefined,
-      'Notes': notes || undefined,
-      ...(propId ? { 'Property': [{ id: propId }] } : {}),
-    }
-    console.log('Saving listing', data?.id, fields)
-    const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
     try {
+      const fields = {
+        'Listing Name': name, 'Listing Type': type || undefined, 'Listing Status': status,
+        'Asking Price': parseFloat(price) || undefined, 'Asking Rate': rate || undefined,
+        'Commission Rate': parseFloat(commRate) ? parseFloat(commRate)/100 : undefined,
+        'Est. Commission': estComm || undefined,
+        'Listing Agreement Date': agreeDate || undefined, 'Listing Expiration Date': expDate || undefined,
+        'Co-List Broker': coListBroker || undefined,
+        'Co-List Fee': parseFloat(coListFee) ? parseFloat(coListFee)/100 : undefined,
+        'Offer Status': offerStatus || undefined, 'Buyer / Tenant': buyerTenant || undefined,
+        'Notes': notes || undefined,
+        ...(propId ? { 'Property': [{ id: propId }] } : {}),
+      }
+      const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
       if (editing) await apiUpdate('lists', data.id, clean)
       else await apiCreate('lists', clean)
       setSaving(false); onSave()
-    } catch(err) {
-      setSaving(false)
-      alert('Save failed: ' + err.message)
-    }
+    } catch(err) { setSaving(false); alert('Save failed: ' + err.message) }
   }
+
   return (
     <div>
       <SearchInput label="Property" records={props} nameField={F.props.addr} subField={F.props.city} onSelect={setPropId} placeholder="Search property..." />
       <div style={fgrp}><label style={flbl}>Listing Name *</label><input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. 960 N Leavitt – Amherst" /></div>
       <div style={row2}>
-        <div style={fgrp}><label style={flbl}>Structure</label><select style={inp} value={structure} onChange={e=>setStructure(e.target.value)}><option value="">Select...</option><option>Sale</option><option>Lease</option><option>Sale or Lease</option><option>Sale or Ground Lease</option><option>Ground Lease</option><option>Build to Suit</option></select></div>
-        <div style={fgrp}><label style={flbl}>Status</label><select style={inp} value={status} onChange={e=>setStatus(e.target.value)}>{['Active','Under Contract','Closed','Expired','Withdrawn'].map(s=><option key={s}>{s}</option>)}</select></div>
+        <div style={fgrp}><label style={flbl}>Listing Type</label><select style={inp} value={type} onChange={e=>setType(e.target.value)}><option value="">Select...</option>{['Sale','Lease','Sale & Lease'].map(t=><option key={t}>{t}</option>)}</select></div>
+        <div style={fgrp}><label style={flbl}>Listing Status</label><select style={inp} value={status} onChange={e=>setStatus(e.target.value)}>{['Active','Under Contract','Closed','Expired','Withdrawn'].map(s=><option key={s}>{s}</option>)}</select></div>
       </div>
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Asking Price $</label><input style={inp} type="number" value={price} onChange={e=>setPrice(e.target.value)} /></div>
-        <div style={fgrp}><label style={flbl}>Commission Rate %</label><input style={inp} type="number" step="0.1" value={commRate} onChange={e=>setCommRate(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Asking Rate</label><input style={inp} value={rate} onChange={e=>setRate(e.target.value)} placeholder="e.g. $18/SF NNN" /></div>
       </div>
-      {estComm > 0 && <div style={computed}><span style={{ fontSize: '12px', color: '#316828', fontWeight: 500 }}>Est. Commission</span><span style={{ fontSize: '18px', fontWeight: 700, color: '#316828' }}>{fmt$(estComm)}</span></div>}
       <div style={row2}>
-        <div style={fgrp}><label style={flbl}>Listing Date</label><input style={inp} type="date" value={listDate} onChange={e=>setListDate(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Commission Rate %</label><input style={inp} type="number" step="0.1" value={commRate} onChange={e=>setCommRate(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Offer Status</label><select style={inp} value={offerStatus} onChange={e=>setOfferStatus(e.target.value)}><option value="">Select...</option>{['None','LOI Received','Countered','Accepted','Dead'].map(s=><option key={s}>{s}</option>)}</select></div>
+      </div>
+      {estComm > 0 && (
+        <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'8px', padding:'10px 14px', marginBottom:'10px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px' }}>
+            <div><div style={{ fontSize:'11px', color:'#6b7280' }}>Gross Commission</div><div style={{ fontWeight:700 }}>{fmt$(estComm)}</div></div>
+            <div><div style={{ fontSize:'11px', color:'#6b7280' }}>Your 80%</div><div style={{ fontWeight:700, color:'#316828' }}>{fmt$(estComm*0.8)}</div></div>
+            <div><div style={{ fontSize:'11px', color:'#6b7280' }}>REAT 20%</div><div style={{ fontWeight:700, color:'#c69425' }}>{fmt$(estComm*0.2)}</div></div>
+          </div>
+        </div>
+      )}
+      <div style={row2}>
+        <div style={fgrp}><label style={flbl}>Listing Agreement Date</label><input style={inp} type="date" value={agreeDate} onChange={e=>setAgreeDate(e.target.value)} /></div>
         <div style={fgrp}><label style={flbl}>Expiration Date</label><input style={inp} type="date" value={expDate} onChange={e=>setExpDate(e.target.value)} /></div>
       </div>
-      <div style={fgrp}><label style={flbl}>Co-Broker</label><input style={inp} value={coBroker} onChange={e=>setCoBroker(e.target.value)} /></div>
       <div style={row2}>
-        <div style={fgrp}><label style={flbl}>Current Offer / LOI</label><input style={inp} value={offer} onChange={e=>setOffer(e.target.value)} /></div>
-        <div style={fgrp}><label style={flbl}>Offer Status</label><select style={inp} value={offerStatus} onChange={e=>setOfferStatus(e.target.value)}><option value="">Select...</option><option>Offer Received</option><option>Under Review</option><option>Accepted</option><option>Rejected</option><option>Counter</option></select></div>
+        <div style={fgrp}><label style={flbl}>Co-List Broker</label><input style={inp} value={coListBroker} onChange={e=>setCoListBroker(e.target.value)} /></div>
+        <div style={fgrp}><label style={flbl}>Co-List Fee %</label><input style={inp} type="number" step="0.1" value={coListFee} onChange={e=>setCoListFee(e.target.value)} /></div>
       </div>
       <div style={fgrp}><label style={flbl}>Buyer / Tenant</label><input style={inp} value={buyerTenant} onChange={e=>setBuyerTenant(e.target.value)} /></div>
-      <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{ ...inp, minHeight: '70px', resize: 'vertical' }} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2dcc8' }}>
+      <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{...inp,minHeight:'70px',resize:'vertical'}} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
+      <div style={{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'12px',paddingTop:'12px',borderTop:'1px solid #e2dcc8'}}>
         <button style={btnSecondary} onClick={onCancel}>Cancel</button>
-        <button style={{ ...btnPrimary, opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Save Changes' : 'Save Listing'}</button>
+        <button style={{...btnPrimary,opacity:saving?0.6:1}} onClick={handleSave} disabled={saving}>{saving?'Saving...':editing?'Save Changes':'Save Listing'}</button>
       </div>
     </div>
   )
 }
+
 
 // ─── Activity Form ────────────────────────────────────────────────────────────
 function ActivityForm({ props, deals, lists, onSave, onCancel, prefillDealId, prefillListId, prefillPropId }) {
@@ -438,7 +445,7 @@ function ActivityForm({ props, deals, lists, onSave, onCancel, prefillDealId, pr
         <div style={fgrp}><label style={flbl}>Follow-Up Action</label><input style={inp} value={fuAction} onChange={e=>setFuAction(e.target.value)} /></div>
       </div>
       <SearchInput label="Linked Property" records={props} nameField={F.props.addr} subField={F.props.city} onSelect={setPropId} placeholder="Search property..." />
-      <SearchInput label="Linked Deal" records={deals} nameField={F.deals.name} subField={F.deals.tenant} onSelect={setDealId} placeholder="Search deals..." />
+      <SearchInput label="Linked Deal" records={deals} nameField={F.deals.name} subField={F.deals.stage} onSelect={setDealId} placeholder="Search deals..." />
       <SearchInput label="Linked Listing" records={lists} nameField={F.lists.name} subField={F.lists.name} onSelect={setListId} placeholder="Search listings..." />
       <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{ ...inp, minHeight: '60px', resize: 'vertical' }} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2dcc8' }}>
@@ -605,10 +612,9 @@ function ListingDetail({ listing, allData, onBack, onRefresh }) {
           <DetailRow label="Structure" value={fv(f, F.lists.type)} />
           <DetailRow label="Asking Rate" value={fv(f, F.lists.rate)} />
           <DetailRow label="Comm. Rate" value={f[F.lists.commRate] ? (f[F.lists.commRate]*100).toFixed(2)+'%' : '—'} />
-          <DetailRow label="Listing Date" value={fv(f, F.lists.listDate)} />
+          <DetailRow label="Agreement Date" value={fv(f, F.lists.agreeDate)} />
           <DetailRow label="Expiration" value={fv(f, F.lists.expDate)} />
-          <DetailRow label="Co-Broker" value={fv(f, F.lists.coBroker)} />
-          <DetailRow label="Current Offer" value={fv(f, F.lists.offer)} />
+          <DetailRow label="Co-List Broker" value={fv(f, F.lists.coListBroker)} />
           <DetailRow label="Offer Status" value={fv(f, F.lists.offerStatus)} />
           <DetailRow label="Buyer / Tenant" value={fv(f, F.lists.buyerTenant)} />
           {f[F.lists.notes] && <div style={{ marginTop: '10px' }}><div style={flbl}>Notes</div><div style={{ fontSize: '13px', whiteSpace: 'pre-wrap' }}>{f[F.lists.notes]}</div></div>}
@@ -915,8 +921,8 @@ function ContactForm({ data, props, deals, lists, onSave, onCancel }) {
         <div style={fgrp}><label style={flbl}>Email</label><input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} /></div>
       </div>
       <SearchInput label="Linked Property" records={props} nameField="Address" subField="City" onSelect={setPropId} placeholder="Search property..." />
-      <SearchInput label="Linked Deal" records={deals} nameField="Deal Name" subField="Market" onSelect={setDealId} placeholder="Search deals..." />
-      <SearchInput label="Linked Listing" records={lists} nameField="Listing Name" subField="Market" onSelect={setListId} placeholder="Search listings..." />
+      <SearchInput label="Linked Deal" records={deals} nameField="Deal Name" subField={F.deals.stage} onSelect={setDealId} placeholder="Search deals..." />
+      <SearchInput label="Linked Listing" records={lists} nameField="Listing Name" subField={F.deals.stage} onSelect={setListId} placeholder="Search listings..." />
       <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{...inp, minHeight:'60px', resize:'vertical'}} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
       <div style={{display:'flex', gap:'8px', justifyContent:'flex-end', marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #e2dcc8'}}>
         <button style={btnSecondary} onClick={onCancel}>Cancel</button>
@@ -1244,7 +1250,7 @@ export default function CRM() {
             <div style={card}>
               <table style={tbl}>
                 <thead><tr><th style={th}>Name</th><th style={th}>Company</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead>
-                <tbody>{filt(conts,[F.conts.name,F.conts.company]).map(c => <tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)||'—'}</div></td><td style={td}>{fv(c.fields,F.conts.company)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)||'—'}</td><td style={td}>{fv(c.fields,F.conts.phone)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)||'—'}</td></tr>)}</tbody>
+                <tbody>{filt(conts,[F.conts.firstName,F.conts.lastName,F.conts.company]).map(c => <tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)||'—'}</div></td><td style={td}>{fv(c.fields,F.conts.company)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)||'—'}</td><td style={td}>{fv(c.fields,F.conts.phone)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)||'—'}</td></tr>)}</tbody>
               </table>
             </div>
           )}
