@@ -1,6 +1,6 @@
 'use client'
 import { useUser, UserButton } from '@clerk/nextjs'
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 
 // ─── Field Names (Airtable REST API returns field names not IDs) ───────────────
 const F = {
@@ -403,9 +403,9 @@ function ActivityForm({ props, deals, lists, onSave, onCancel, prefillDealId, pr
   const [fuDate, setFuDate] = useState('')
   const [fuAction, setFuAction] = useState('')
   const [notes, setNotes] = useState('')
-  const [propId, setPropId] = useState(prefillPropId || null)
-  const [dealId, setDealId] = useState(prefillDealId || null)
-  const [listId, setListId] = useState(prefillListId || null)
+  const [propId, setPropId] = useState(typeof prefillPropId === 'string' ? prefillPropId : null)
+  const [dealId, setDealId] = useState(typeof prefillDealId === 'string' ? prefillDealId : null)
+  const [listId, setListId] = useState(typeof prefillListId === 'string' ? prefillListId : null)
   const [saving, setSaving] = useState(false)
   const handleSave = async () => {
     if (!desc) return alert('Activity required')
@@ -928,6 +928,236 @@ function ContactForm({ data, props, deals, lists, onSave, onCancel }) {
         <button style={btnSecondary} onClick={onCancel}>Cancel</button>
         <button style={{...btnPrimary, opacity:saving?0.6:1}} onClick={handleSave} disabled={saving}>{saving?'Saving...':editing?'Save Changes':'Save Contact'}</button>
       </div>
+    </div>
+  )
+}
+
+
+// ─── Prospecting Page ─────────────────────────────────────────────────────────
+function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
+  const { props, acts, conts, deals, lists } = allData
+  const [modal, setModal] = useState(null)
+  const [selectedProp, setSelectedProp] = useState(null)
+  const [expandedId, setExpandedId] = useState(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('All')
+  const [saving, setSaving] = useState(null)
+
+  const now = new Date()
+  const STATUS_ORDER = ['New','Researching','Calling','Connected','Pitched','Active','Dead']
+  const STATUS_COLORS = { 'New':'#6b7280','Researching':'#1d4ed8','Calling':'#a16207','Connected':'#316828','Pitched':'#7c3aed','Active':'#16a34a','Dead':'#dc2626' }
+
+  const overdue = props.filter(p => {
+    const lo = p.fields[F.props.lastOutreach]
+    const status = fv(p.fields, F.props.status)
+    if (status === 'Dead' || status === 'Active') return false
+    if (!lo) return true
+    return new Date(lo) < now
+  })
+
+  const filtered = props
+    .filter(p => {
+      const status = fv(p.fields, F.props.status)
+      if (statusFilter !== 'All' && status !== statusFilter) return false
+      if (search) {
+        const q = search.toLowerCase()
+        return (fv(p.fields,F.props.addr)+fv(p.fields,F.props.city)+fv(p.fields,F.props.entity)+fv(p.fields,F.props.ownerName)).toLowerCase().includes(q)
+      }
+      return true
+    })
+    .sort((a,b) => {
+      const aLo = a.fields[F.props.lastOutreach] || ''
+      const bLo = b.fields[F.props.lastOutreach] || ''
+      if (aLo !== bLo) return aLo.localeCompare(bLo)
+      return STATUS_ORDER.indexOf(fv(a.fields,F.props.status)) - STATUS_ORDER.indexOf(fv(b.fields,F.props.status))
+    })
+
+  const quickLogVM = async (propId) => {
+    setSaving(propId)
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      await apiCreate('acts', {
+        'Activity': 'Call attempt — Voicemail',
+        'Type': 'Call',
+        'Date': today,
+        'Outcome': 'Voicemail',
+        'Linked Property': [{ id: propId }],
+      })
+      const prop = props.find(p => p.id === propId)
+      const attempts = (prop?.fields[F.props.attempts] || 0) + 1
+      await apiUpdate('props', propId, {
+        'Outreach Attempts': attempts,
+        'Last Outreach Date': today,
+        ...(!prop?.fields[F.props.firstOutreach] ? { 'First Outreach Date': today } : {}),
+      })
+      onRefresh()
+    } catch(err) { alert('Error: ' + err.message) }
+    setSaving(null)
+  }
+
+  const updateStatus = async (propId, newStatus) => {
+    try { await apiUpdate('props', propId, { 'Prospecting Status': newStatus }); onRefresh() }
+    catch(err) { alert('Error: ' + err.message) }
+  }
+
+  const byStatus = {}
+  STATUS_ORDER.forEach(s => { byStatus[s] = props.filter(p => fv(p.fields,F.props.status) === s).length })
+
+  return (
+    <div>
+      {/* Status bar */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'8px', marginBottom:'16px' }}>
+        {STATUS_ORDER.map(s => (
+          <div key={s} onClick={() => setStatusFilter(statusFilter === s ? 'All' : s)}
+            style={{ background: statusFilter===s ? STATUS_COLORS[s] : '#fff', color: statusFilter===s ? '#fff' : '#1a1a1a', border:`2px solid ${STATUS_COLORS[s]}`, borderRadius:'8px', padding:'10px', textAlign:'center', cursor:'pointer' }}>
+            <div style={{ fontSize:'20px', fontWeight:700 }}>{byStatus[s]||0}</div>
+            <div style={{ fontSize:'10px', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginTop:'2px' }}>{s}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Overdue banner */}
+      {overdue.length > 0 && (
+        <div style={{ background:'#fee2e2', border:'1px solid #fca5a5', borderRadius:'8px', padding:'10px 14px', marginBottom:'14px', display:'flex', alignItems:'center', gap:'10px' }}>
+          <span style={{ fontSize:'16px' }}>🔴</span>
+          <span style={{ fontWeight:700, color:'#dc2626', fontSize:'13px' }}>{overdue.length} properties need outreach</span>
+        </div>
+      )}
+
+      {/* Search + filter */}
+      <div style={{ display:'flex', gap:'10px', marginBottom:'14px', alignItems:'center' }}>
+        <input style={{ ...inp, maxWidth:'280px' }} placeholder="Search address, owner, entity..." value={search} onChange={e => setSearch(e.target.value)} />
+        <select style={{ ...inp, maxWidth:'160px' }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="All">All Statuses</option>
+          {STATUS_ORDER.map(s => <option key={s}>{s}</option>)}
+        </select>
+        <div style={{ marginLeft:'auto', fontSize:'12px', color:'#9ca3af' }}>{filtered.length} properties</div>
+      </div>
+
+      {/* Call Sheet */}
+      <div style={card}>
+        <table style={tbl}>
+          <thead>
+            <tr>
+              <th style={th}>Property</th>
+              <th style={th}>Owner / Entity</th>
+              <th style={th}>Status</th>
+              <th style={th}>Attempts</th>
+              <th style={th}>Last Outreach</th>
+              <th style={th}>Source</th>
+              <th style={th}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(p => {
+              const pf = p.fields
+              const isExpanded = expandedId === p.id
+              const propConts = conts.filter(c => linked(c.fields, F.conts.linkedProp).some(l => l.id === p.id))
+              const lo = pf[F.props.lastOutreach]
+              const daysAgo = lo ? Math.floor((now - new Date(lo)) / 86400000) : null
+              const isOverdue = !['Dead','Active'].includes(fv(pf,F.props.status)) && (!lo || daysAgo > 0)
+
+              return (
+                <React.Fragment key={p.id}>
+                  <tr style={{ background: isOverdue?'#fff9f9':isExpanded?'#faf8f0':'#fff', cursor:'pointer' }} onClick={() => setExpandedId(isExpanded ? null : p.id)}>
+                    <td style={td}>
+                      <div style={{ fontWeight:600, color:'#316828' }}>{fv(pf,F.props.addr)}</div>
+                      <div style={{ fontSize:'11px', color:'#9ca3af' }}>{fv(pf,F.props.city)}{pf[F.props.sf]?' · '+Number(pf[F.props.sf]).toLocaleString()+' SF':''}{pf[F.props.acreage]?' · '+pf[F.props.acreage]+' ac':''}</div>
+                    </td>
+                    <td style={td}>
+                      <div style={{ fontWeight:500 }}>{fv(pf,F.props.ownerName)||fv(pf,F.props.entity)||'—'}</div>
+                      {fv(pf,F.props.ownerName) && fv(pf,F.props.entity) && <div style={{ fontSize:'11px', color:'#9ca3af' }}>{fv(pf,F.props.entity)}</div>}
+                      {fv(pf,F.props.ownerPhone) && <div style={{ fontSize:'12px', color:'#316828', fontWeight:500 }}>{fv(pf,F.props.ownerPhone)}</div>}
+                    </td>
+                    <td style={td} onClick={e => e.stopPropagation()}>
+                      <select style={{ ...inp, padding:'3px 6px', fontSize:'12px', width:'120px' }} value={fv(pf,F.props.status)} onChange={e => updateStatus(p.id, e.target.value)}>
+                        {STATUS_ORDER.map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ ...td, textAlign:'center' }}>
+                      <span style={{ fontWeight:700, color:(pf[F.props.attempts]||0)>3?'#dc2626':'#1a1a1a' }}>{pf[F.props.attempts]||0}</span>
+                    </td>
+                    <td style={td}>
+                      {lo ? (
+                        <div>
+                          <div style={{ fontSize:'12px', fontWeight:500 }}>{lo}</div>
+                          <div style={{ fontSize:'11px', color:isOverdue?'#dc2626':'#9ca3af' }}>{daysAgo===0?'Today':`${daysAgo}d ago`}</div>
+                        </div>
+                      ) : <span style={{ color:'#dc2626', fontSize:'12px', fontWeight:600 }}>Never</span>}
+                    </td>
+                    <td style={{ ...td, color:'#6b7280', fontSize:'12px' }}>{fv(pf,F.props.source)||'—'}</td>
+                    <td style={td} onClick={e => e.stopPropagation()}>
+                      <div style={{ display:'flex', gap:'4px', flexWrap:'wrap' }}>
+                        <button style={btnSmall} disabled={saving===p.id} onClick={() => quickLogVM(p.id)}>{saving===p.id?'...':'📞 VM'}</button>
+                        <button style={{ ...btnSmall, background:'#e8f0e9', color:'#316828', borderColor:'#316828' }} onClick={() => { setSelectedProp(p); setModal('logcall') }}>Log Call</button>
+                        <button style={{ ...btnSmall, background:'#faf8f0', color:'#c69425', borderColor:'#c69425' }} onClick={() => onSelectProperty(p)}>View →</button>
+                      </div>
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr key={p.id+'_exp'} style={{ background:'#faf8f0' }}>
+                      <td colSpan={7} style={{ padding:'12px 16px', borderBottom:'1px solid #e2dcc8' }}>
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'16px' }}>
+                          <div>
+                            <div style={secTitle}>Research Notes</div>
+                            <div style={{ fontSize:'12px', color:'#374151', whiteSpace:'pre-wrap', background:'#fff', borderRadius:'6px', padding:'8px', border:'1px solid #e2dcc8', minHeight:'60px' }}>{fv(pf,F.props.notes)||'No notes. Click View → to edit.'}</div>
+                          </div>
+                          <div>
+                            <div style={{ ...secTitle, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                              Confirmed Contacts
+                              <button style={btnSmall} onClick={() => { setSelectedProp(p); setModal('addcontact') }}>+ Add</button>
+                            </div>
+                            {propConts.length === 0
+                              ? <div style={{ fontSize:'12px', color:'#9ca3af' }}>No confirmed contacts yet</div>
+                              : propConts.map(c => (
+                                <div key={c.id} style={{ background:'#fff', border:'1px solid #e2dcc8', borderRadius:'6px', padding:'8px', marginBottom:'6px' }}>
+                                  <div style={{ fontWeight:600, fontSize:'13px' }}>{contName(c.fields)}</div>
+                                  {fv(c.fields,F.conts.title) && <div style={{ fontSize:'11px', color:'#6b7280' }}>{fv(c.fields,F.conts.title)}</div>}
+                                  {fv(c.fields,F.conts.phone) && <div style={{ fontSize:'12px', color:'#316828', fontWeight:500 }}>{fv(c.fields,F.conts.phone)}</div>}
+                                  {fv(c.fields,F.conts.email) && <div style={{ fontSize:'11px', color:'#6b7280' }}>{fv(c.fields,F.conts.email)}</div>}
+                                </div>
+                              ))
+                            }
+                          </div>
+                          <div>
+                            <div style={secTitle}>Quick Actions</div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                              <button style={{ ...btnSecondary, fontSize:'12px', textAlign:'left' }} onClick={() => { setSelectedProp(p); setModal('logcall') }}>📞 Log Detailed Call</button>
+                              <button style={{ ...btnSecondary, fontSize:'12px', textAlign:'left' }} onClick={() => onSelectProperty(p)}>📋 Full Property View</button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {modal === 'logcall' && selectedProp && (
+        <Modal title={`Log Call — ${fv(selectedProp.fields,F.props.addr)}`} onClose={() => setModal(null)}>
+          <ActivityForm props={allData.props} deals={deals} lists={lists} prefillPropId={selectedProp.id}
+            onSave={async () => {
+              const today = new Date().toISOString().split('T')[0]
+              const attempts = (selectedProp.fields[F.props.attempts]||0) + 1
+              await apiUpdate('props', selectedProp.id, {
+                'Outreach Attempts': attempts,
+                'Last Outreach Date': today,
+                ...(!selectedProp.fields[F.props.firstOutreach] ? { 'First Outreach Date': today } : {}),
+              })
+              setModal(null); onRefresh()
+            }}
+            onCancel={() => setModal(null)} />
+        </Modal>
+      )}
+      {modal === 'addcontact' && selectedProp && (
+        <Modal title={`Add Contact — ${fv(selectedProp.fields,F.props.addr)}`} onClose={() => setModal(null)}>
+          <ContactForm props={allData.props} deals={deals} lists={lists} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} />
+        </Modal>
+      )}
     </div>
   )
 }
