@@ -1809,7 +1809,7 @@ export default function CRM() {
               <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>All Deals</div>
               {(() => {
                 const groups = [...tenants.map(t => ({ key: t, label: t, deals: deals.filter(d => fv(d.fields, F.deals.clientName) === t) })),
-                  { key: '__other__', label: 'Other / Unassigned', deals: deals.filter(d => !fv(d.fields, F.deals.clientName)) }
+                  { key: '__other__', label: 'Listings', deals: deals.filter(d => !fv(d.fields, F.deals.clientName)) }
                 ].filter(g => g.deals.length > 0)
                 return groups.map(({ key, label, deals: tDeals }) => {
                 const tActive = tDeals.filter(d => !['Executed','Dead'].includes(fv(d.fields, F.deals.stage)))
