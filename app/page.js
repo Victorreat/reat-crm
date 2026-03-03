@@ -46,6 +46,7 @@ const F = {
     fuAction:'Follow-Up Action', fuDone:'Follow-Up Done',
     linkedProp:'Linked Property', linkedListing:'Linked Listing',
     linkedDeal:'Linked Deal', linkedContact:'Linked Contact',
+    capture:'Capture', status:'Status', nextAction:'Next Action',
   }
 }
 
@@ -1244,7 +1245,6 @@ export default function CRM() {
   const fueDue = acts.filter(a => { const fd = a.fields[F.acts.fuDate]; return fd && !a.fields[F.acts.fuDone] && new Date(fd) <= new Date() }).length
 
   const overdueCount = acts.filter(a => { const fd = a.fields[F.acts.fuDate]; return fd && !a.fields[F.acts.fuDone] && new Date(fd) <= new Date() }).length
-  const prospectingCount = props.filter(p => !['Active','Dead'].includes(fv(p.fields,F.props.status))).length
 
   const VIEWS = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -1253,7 +1253,6 @@ export default function CRM() {
     { id: 'deals', label: 'Deals', count: deals.length },
     { id: 'contacts', label: 'Contacts', count: conts.length },
     { id: 'activities', label: 'Activity / GTD', count: overdueCount || undefined, countRed: !!overdueCount },
-    { id: 'prospecting', label: '📞 Prospecting', count: prospectingCount },
     { id: 'calendar', label: 'Commission Cal.' },
   ]
 
@@ -1454,13 +1453,42 @@ export default function CRM() {
             )
           })()}
 
-          {/* Properties */}
+          {/* Properties — stacked: Prospecting call sheet on top, pipeline below */}
           {!detail && view === 'properties' && (
-            <div style={card}>
-              <table style={tbl}>
-                <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Attributes</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
-                <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => <tr key={r.id} style={{ cursor:'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}><td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td><td style={td}>{fv(r.fields,F.props.city)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(r.fields,F.props.attrs)||'—'}</td><td style={td}><Badge value={r.fields[F.props.status]} /></td><td style={td}>{r.fields[F.props.acreage]||'—'}</td><td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td></tr>)}</tbody>
-              </table>
+            <div>
+              {/* ── Prospecting Call Sheet ── */}
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>
+                  📞 Prospecting Call Sheet
+                </div>
+                <ProspectingPage
+                  allData={allData}
+                  onRefresh={onRefresh}
+                  onSelectProperty={p => setSelected(s => ({...s, property: p}))}
+                />
+              </div>
+
+              {/* ── Property Pipeline ── */}
+              <div style={{ borderTop: '2px solid #e2dcc8', paddingTop: '20px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>
+                  Property Pipeline
+                </div>
+                <div style={card}>
+                  <table style={tbl}>
+                    <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Attributes</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
+                    <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => (
+                      <tr key={r.id} style={{ cursor:'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}>
+                        <td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td>
+                        <td style={td}>{fv(r.fields,F.props.city)||'—'}</td>
+                        <td style={{...td,color:'#6b7280'}}>{fv(r.fields,F.props.attrs)||'—'}</td>
+                        <td style={td}><Badge value={r.fields[F.props.status]} /></td>
+                        <td style={td}>{r.fields[F.props.acreage]||'—'}</td>
+                        <td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1519,8 +1547,27 @@ export default function CRM() {
             const todayStr = now.toDateString()
             const [actTab, setActTab] = React.useState('capture')
             const [captureText, setCaptureText] = React.useState('')
-            const [captureType, setCaptureType] = React.useState('Note')
             const [captureSaving, setCaptureSaving] = React.useState(false)
+            const [clarifyIdx, setClarifyIdx] = React.useState(0)
+            const [updating, setUpdating] = React.useState(null)
+
+            // GTD buckets based on Status field
+            const inbox = acts.filter(a => !fv(a.fields, F.acts.status) && (a.fields[F.acts.capture] || fv(a.fields, F.acts.desc)))
+            const nextActions = acts.filter(a => fv(a.fields, F.acts.status) === 'Deferred')
+            const waitingFor = acts.filter(a => fv(a.fields, F.acts.status) === 'Delegated')
+            const someday = acts.filter(a => fv(a.fields, F.acts.status) === 'Incubate')
+            const projects = acts.filter(a => fv(a.fields, F.acts.status) === 'Project')
+            const recent = [...acts].sort((a,b) => (b.fields[F.acts.date]||'').localeCompare(a.fields[F.acts.date]||'')).slice(0,25)
+
+            // Follow-up alerts (keep these working)
+            const overdueFU = acts.filter(a => {
+              const fd = a.fields[F.acts.fuDate]
+              return fd && !a.fields[F.acts.fuDone] && new Date(fd) < now && new Date(fd).toDateString() !== todayStr
+            })
+            const dueTodayFU = acts.filter(a => {
+              const fd = a.fields[F.acts.fuDate]
+              return fd && !a.fields[F.acts.fuDone] && new Date(fd).toDateString() === todayStr
+            })
 
             const handleCapture = async () => {
               if (!captureText.trim()) return
@@ -1528,7 +1575,7 @@ export default function CRM() {
               try {
                 await apiCreate('acts', {
                   'Activity': captureText.trim(),
-                  'Type': captureType,
+                  'Capture': captureText.trim(),
                   'Date': now.toISOString().split('T')[0],
                 })
                 setCaptureText('')
@@ -1537,57 +1584,51 @@ export default function CRM() {
               setCaptureSaving(false)
             }
 
-            const overdue = acts.filter(a => {
-              const fd = a.fields[F.acts.fuDate]
-              return fd && !a.fields[F.acts.fuDone] && new Date(fd) < now && new Date(fd).toDateString() !== todayStr
-            })
-            const dueToday = acts.filter(a => {
-              const fd = a.fields[F.acts.fuDate]
-              return fd && !a.fields[F.acts.fuDone] && new Date(fd).toDateString() === todayStr
-            })
-            const upcoming = acts.filter(a => {
-              const fd = a.fields[F.acts.fuDate]
-              return fd && !a.fields[F.acts.fuDone] && new Date(fd) > now && new Date(fd).toDateString() !== todayStr
-            }).sort((a,b) => (a.fields[F.acts.fuDate]||'').localeCompare(b.fields[F.acts.fuDate]||''))
-            const waitingFor = acts.filter(a => fv(a.fields, F.acts.type) === 'Waiting For')
-            const recent = [...acts].sort((a,b) => (b.fields[F.acts.date]||'').localeCompare(a.fields[F.acts.date]||'')).slice(0,25)
+            const clarifyItem = async (id, status, nextAction) => {
+              setUpdating(id)
+              try {
+                const fields = { 'Status': status }
+                if (nextAction) fields['Next Action'] = nextAction
+                await apiUpdate('acts', id, fields)
+                setClarifyIdx(0)
+                await onRefresh()
+              } catch(e) { alert('Error: ' + e.message) }
+              setUpdating(null)
+            }
 
-            const ActSection = ({title, color, items, emptyMsg}) => (
-              <div style={{marginBottom:'20px'}}>
-                <div style={{fontSize:'12px', fontWeight:700, color:color||'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>{title} <span style={{fontWeight:400}}>({items.length})</span></div>
-                {items.length ? (
-                  <div style={card}>
-                    <table style={tbl}>
-                      <thead><tr><th style={th}>Activity</th><th style={th}>Type</th><th style={th}>Follow-Up Date</th><th style={th}>Action Needed</th><th style={th}>Linked To</th></tr></thead>
-                      <tbody>{items.map(a => {
-                        const linkedDeal = linked(a.fields, F.acts.linkedDeal)[0]
-                        const linkedProp = linked(a.fields, F.acts.linkedProp)[0]
-                        const linkedList = linked(a.fields, F.acts.linkedListing)[0]
-                        const linkLabel = linkedDeal ? '🤝 Deal' : linkedProp ? '🏠 Property' : linkedList ? '📋 Listing' : '—'
-                        return (
-                          <tr key={a.id} style={{background: overdue.includes(a) ? '#fff9f9' : '#fff'}}>
-                            <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div>{a.fields[F.acts.notes]&&<div style={{fontSize:'11px',color:'#9ca3af',marginTop:'2px'}}>{a.fields[F.acts.notes]}</div>}</td>
-                            <td style={{...td,color:'#6b7280'}}>{fv(a.fields,F.acts.type)||'—'}</td>
-                            <td style={{...td,color:color||'#6b7280',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)||'—'}</td>
-                            <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
-                            <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linkLabel}</td>
-                          </tr>
-                        )
-                      })}</tbody>
-                    </table>
-                  </div>
-                ) : <div style={{color:'#9ca3af',fontSize:'13px',padding:'8px 0',marginBottom:'8px'}}>{emptyMsg}</div>}
-              </div>
-            )
+            // Next actions grouped by context
+            const CONTEXTS = ['@Call','@Email','@Computer','@Car','@Errand','@Anywhere']
+            const byContext = {}
+            CONTEXTS.forEach(c => { byContext[c] = nextActions.filter(a => fv(a.fields, F.acts.nextAction) === c) })
+            const uncontexted = nextActions.filter(a => !fv(a.fields, F.acts.nextAction))
 
             const TABS = [
               { id: 'capture', label: '⚡ Capture' },
-              { id: 'today', label: `🟡 Today (${dueToday.length})` },
-              { id: 'overdue', label: `🔴 Overdue (${overdue.length})`, red: overdue.length > 0 },
-              { id: 'upcoming', label: `🟢 Upcoming (${upcoming.length})` },
+              { id: 'clarify', label: `🔍 Clarify (${inbox.length})`, red: inbox.length > 0 },
+              { id: 'next', label: `✅ Next Actions (${nextActions.length})` },
               { id: 'waiting', label: `⏳ Waiting (${waitingFor.length})` },
+              { id: 'someday', label: `💭 Someday (${someday.length})` },
+              { id: 'followups', label: `🔴 Follow-Ups (${overdueFU.length + dueTodayFU.length})`, red: overdueFU.length > 0 },
               { id: 'log', label: 'All Activity' },
             ]
+
+            const GtdRow = ({ a, showContext }) => (
+              <tr key={a.id}>
+                <td style={td}>
+                  <div style={{fontWeight:500}}>{fv(a.fields,F.acts.capture) || fv(a.fields,F.acts.desc) || '—'}</div>
+                  {a.fields[F.acts.notes] && <div style={{fontSize:'11px',color:'#9ca3af',marginTop:'2px'}}>{a.fields[F.acts.notes]}</div>}
+                </td>
+                {showContext && <td style={{...td,color:'#7c3aed',fontWeight:600}}>{fv(a.fields,F.acts.nextAction)||'—'}</td>}
+                <td style={{...td,color:'#6b7280'}}>{fv(a.fields,F.acts.date)||'—'}</td>
+                <td style={{...td,color:'#6b7280',fontSize:'12px'}}>
+                  {linked(a.fields,F.acts.linkedDeal)[0] ? '🤝 Deal' : linked(a.fields,F.acts.linkedProp)[0] ? '🏠 Property' : linked(a.fields,F.acts.linkedListing)[0] ? '📋 Listing' : '—'}
+                </td>
+                <td style={td}>
+                  <button style={{...btnSmall, color:'#dc2626', borderColor:'#dc2626'}} disabled={!!updating}
+                    onClick={() => clarifyItem(a.id, 'Done')}>✓ Done</button>
+                </td>
+              </tr>
+            )
 
             return (
               <div>
@@ -1602,52 +1643,188 @@ export default function CRM() {
                   ))}
                 </div>
 
-                {/* CAPTURE */}
+                {/* ── CAPTURE ── */}
                 {actTab === 'capture' && (
                   <div>
                     <div style={{...card, padding:'16px', marginBottom:'16px'}}>
-                      <div style={{fontSize:'13px', fontWeight:700, marginBottom:'10px'}}>Quick Capture</div>
-                      <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'10px'}}>Drop anything here — call notes, ideas, tasks, follow-ups. Link it later.</div>
+                      <div style={{fontSize:'13px', fontWeight:700, marginBottom:'6px'}}>Brain Dump</div>
+                      <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'10px'}}>Don't think — just dump. Capture everything, process in Clarify.</div>
                       <textarea
-                        style={{...inp, minHeight:'80px', resize:'vertical', marginBottom:'8px'}}
-                        placeholder="e.g. Called Bob at 7 Brew re: Strongsville site — said they're looking at 3 more Ohio markets..."
+                        style={{...inp, minHeight:'100px', resize:'vertical', marginBottom:'10px'}}
+                        placeholder="e.g. Call Drew re: Strongsville signal easement... Follow up with Tom on parking... Review 7 Brew LOI redlines..."
                         value={captureText}
                         onChange={e => setCaptureText(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleCapture() }}
                       />
                       <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                        <select style={{...inp, maxWidth:'140px'}} value={captureType} onChange={e => setCaptureType(e.target.value)}>
-                          {['Note','Call','Email','Meeting','Task','Site Visit','LOI','Lease','Other'].map(t => <option key={t}>{t}</option>)}
-                        </select>
                         <button style={{...btnPrimary, opacity: captureSaving ? 0.6 : 1}} onClick={handleCapture} disabled={captureSaving}>
                           {captureSaving ? 'Saving...' : '⚡ Capture (⌘↵)'}
                         </button>
-                        <span style={{fontSize:'11px', color:'#9ca3af'}}>or use + Add for full detail</span>
+                        <span style={{fontSize:'11px', color:'#9ca3af'}}>Inbox: {inbox.length} items to process</span>
                       </div>
                     </div>
-                    {/* Show recent unlinked items to process */}
-                    <div style={{fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Recently Captured (unlinked)</div>
-                    <ActsTable acts={recent.filter(a =>
-                      !linked(a.fields,F.acts.linkedDeal).length &&
-                      !linked(a.fields,F.acts.linkedProp).length &&
-                      !linked(a.fields,F.acts.linkedListing).length
-                    ).slice(0,10)} />
                   </div>
                 )}
 
-                {/* TODAY */}
-                {actTab === 'today' && <ActSection title="🟡 Due Today" color="#c69425" items={dueToday} emptyMsg="Nothing due today — you're clear." />}
+                {/* ── CLARIFY ── */}
+                {actTab === 'clarify' && (
+                  <div>
+                    {inbox.length === 0 ? (
+                      <div style={{...card, padding:'24px', textAlign:'center'}}>
+                        <div style={{fontSize:'24px', marginBottom:'8px'}}>✅</div>
+                        <div style={{fontWeight:700, marginBottom:'4px'}}>Inbox zero</div>
+                        <div style={{fontSize:'13px', color:'#6b7280'}}>Everything's been processed.</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'12px'}}>{inbox.length} items to process · Showing {clarifyIdx + 1} of {inbox.length}</div>
+                        {(() => {
+                          const item = inbox[clarifyIdx]
+                          if (!item) return null
+                          const text = fv(item.fields, F.acts.capture) || fv(item.fields, F.acts.desc)
+                          return (
+                            <div style={{...card, padding:'20px'}}>
+                              {/* The item */}
+                              <div style={{fontSize:'16px', fontWeight:600, marginBottom:'6px', lineHeight:1.4}}>{text}</div>
+                              <div style={{fontSize:'12px', color:'#9ca3af', marginBottom:'20px'}}>{fv(item.fields, F.acts.date)}</div>
 
-                {/* OVERDUE */}
-                {actTab === 'overdue' && <ActSection title="🔴 Overdue Follow-Ups" color="#dc2626" items={overdue} emptyMsg="Nothing overdue. Nice." />}
+                              {/* Decision tree */}
+                              <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px'}}>Is it actionable?</div>
 
-                {/* UPCOMING */}
-                {actTab === 'upcoming' && <ActSection title="🟢 Upcoming Follow-Ups" color="#316828" items={upcoming} emptyMsg="No upcoming follow-ups scheduled." />}
+                              {/* NOT actionable */}
+                              <div style={{display:'flex', gap:'8px', marginBottom:'16px', flexWrap:'wrap'}}>
+                                <button style={{...btnSecondary, fontSize:'12px', color:'#dc2626', borderColor:'#dc2626'}} disabled={!!updating}
+                                  onClick={() => clarifyItem(item.id, 'Trash')}>🗑 Trash</button>
+                                <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating}
+                                  onClick={() => clarifyItem(item.id, 'Incubate')}>💭 Someday/Maybe</button>
+                                <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating}
+                                  onClick={() => clarifyItem(item.id, 'Reference')}>📁 Reference</button>
+                              </div>
 
-                {/* WAITING FOR */}
-                {actTab === 'waiting' && <ActSection title="⏳ Waiting For" color="#7c3aed" items={waitingFor} emptyMsg="Nothing in waiting. Log items with Type = Waiting For." />}
+                              <div style={{borderTop:'1px solid #e2dcc8', paddingTop:'16px', marginBottom:'10px'}}>
+                                <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px'}}>Actionable — what's the next step?</div>
+                                <div style={{display:'flex', gap:'8px', marginBottom:'12px', flexWrap:'wrap'}}>
+                                  <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating}
+                                    onClick={() => clarifyItem(item.id, 'Project')}>📋 Project (multi-step)</button>
+                                  <button style={{...btnSecondary, fontSize:'12px', color:'#7c3aed', borderColor:'#7c3aed'}} disabled={!!updating}
+                                    onClick={() => clarifyItem(item.id, 'Delegated')}>👤 Delegate / Waiting For</button>
+                                  <button style={{...btnSecondary, fontSize:'12px', color:'#316828', borderColor:'#316828'}} disabled={!!updating}
+                                    onClick={() => clarifyItem(item.id, 'Done')}>⚡ Do it now (2 min)</button>
+                                </div>
 
-                {/* ALL LOG */}
+                                {/* Defer with context */}
+                                <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Defer — pick context:</div>
+                                <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
+                                  {CONTEXTS.map(c => (
+                                    <button key={c} style={{...btnSmall, background:'#e8f0e9', color:'#316828', borderColor:'#316828', fontSize:'12px', padding:'5px 10px'}}
+                                      disabled={!!updating}
+                                      onClick={() => clarifyItem(item.id, 'Deferred', c)}>
+                                      {updating === item.id ? '...' : c}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Skip */}
+                              {inbox.length > 1 && (
+                                <div style={{marginTop:'16px', borderTop:'1px solid #f0edd8', paddingTop:'12px'}}>
+                                  <button style={{...btnSecondary, fontSize:'12px'}} onClick={() => setClarifyIdx(i => (i+1) % inbox.length)}>Skip → next item</button>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── NEXT ACTIONS ── */}
+                {actTab === 'next' && (
+                  <div>
+                    {nextActions.length === 0 ? (
+                      <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>No next actions. Process your inbox in Clarify.</div>
+                    ) : (
+                      <div>
+                        {uncontexted.length > 0 && (
+                          <div style={{marginBottom:'20px'}}>
+                            <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>No Context Set ({uncontexted.length})</div>
+                            <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+                            <tbody>{uncontexted.map(a => <GtdRow key={a.id} a={a} showContext={false} />)}</tbody></table></div>
+                          </div>
+                        )}
+                        {CONTEXTS.map(c => byContext[c].length > 0 && (
+                          <div key={c} style={{marginBottom:'20px'}}>
+                            <div style={{fontSize:'12px', fontWeight:700, color:'#7c3aed', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>{c} ({byContext[c].length})</div>
+                            <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+                            <tbody>{byContext[c].map(a => <GtdRow key={a.id} a={a} showContext={false} />)}</tbody></table></div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── WAITING FOR ── */}
+                {actTab === 'waiting' && (
+                  <div>
+                    {waitingFor.length === 0
+                      ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>Nothing delegated or waiting on others.</div>
+                      : <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+                        <tbody>{waitingFor.map(a => <GtdRow key={a.id} a={a} showContext={false} />)}</tbody></table></div>
+                    }
+                  </div>
+                )}
+
+                {/* ── SOMEDAY/MAYBE ── */}
+                {actTab === 'someday' && (
+                  <div>
+                    {someday.length === 0
+                      ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>Nothing parked in Someday/Maybe.</div>
+                      : <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+                        <tbody>{someday.map(a => <GtdRow key={a.id} a={a} showContext={false} />)}</tbody></table></div>
+                    }
+                  </div>
+                )}
+
+                {/* ── FOLLOW-UPS ── */}
+                {actTab === 'followups' && (
+                  <div>
+                    {overdueFU.length > 0 && (
+                      <div style={{marginBottom:'20px'}}>
+                        <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🔴 Overdue ({overdueFU.length})</div>
+                        <div style={card}><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
+                        <tbody>{overdueFU.map(a => (
+                          <tr key={a.id} style={{background:'#fff9f9'}}>
+                            <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
+                            <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
+                            <td style={{...td,color:'#dc2626',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)}</td>
+                            <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linked(a.fields,F.acts.linkedDeal)[0]?'🤝 Deal':linked(a.fields,F.acts.linkedProp)[0]?'🏠 Property':linked(a.fields,F.acts.linkedListing)[0]?'📋 Listing':'—'}</td>
+                          </tr>
+                        ))}</tbody></table></div>
+                      </div>
+                    )}
+                    {dueTodayFU.length > 0 && (
+                      <div style={{marginBottom:'20px'}}>
+                        <div style={{fontSize:'12px', fontWeight:700, color:'#c69425', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🟡 Due Today ({dueTodayFU.length})</div>
+                        <div style={card}><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
+                        <tbody>{dueTodayFU.map(a => (
+                          <tr key={a.id}>
+                            <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
+                            <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
+                            <td style={{...td,color:'#c69425',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)}</td>
+                            <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linked(a.fields,F.acts.linkedDeal)[0]?'🤝 Deal':linked(a.fields,F.acts.linkedProp)[0]?'🏠 Property':linked(a.fields,F.acts.linkedListing)[0]?'📋 Listing':'—'}</td>
+                          </tr>
+                        ))}</tbody></table></div>
+                      </div>
+                    )}
+                    {overdueFU.length === 0 && dueTodayFU.length === 0 && (
+                      <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>No follow-ups due. You're clear.</div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── ALL LOG ── */}
                 {actTab === 'log' && (
                   <div>
                     <div style={{fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Last 25 Activities</div>
@@ -1658,12 +1835,7 @@ export default function CRM() {
             )
           })()}
 
-          {/* Prospecting */}
-          {!detail && view === 'prospecting' && (
-            <ProspectingPage allData={allData} onRefresh={onRefresh} onSelectProperty={p => setSelected(s => ({...s, property:p}))} />
-          )}
-
-                    {/* Calendar */}
+          {/* Calendar */}
           {!detail && view === 'calendar' && (() => {
             const months = []
             const now = new Date()
