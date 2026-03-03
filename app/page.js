@@ -1589,7 +1589,6 @@ export default function CRM() {
           ))}
         </nav>
         <div style={{ padding: '12px 8px', borderTop: '1px solid #e2dcc8' }}>
-          <img src="/reat-logo.png" alt="REAT Logo" style={{ width: '80px', display: 'block', margin: '0 auto 10px' }} />
           <button style={{ ...btnPrimary, width: '100%', textAlign: 'center', marginBottom: '10px', padding: '10px' }} onClick={() => setModal('quickadd')}>+ Add</button>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px', paddingLeft: '4px' }}>{user?.firstName} {user?.lastName}</div>
           <UserButton afterSignOutUrl="/sign-in" />
