@@ -11,12 +11,8 @@ const TABLE_IDS = {
 }
 
 async function fetchTable(tableId) {
-  const records = []
-  await base(tableId).select({ pageSize: 100 }).eachPage((recs, next) => {
-    recs.forEach(r => records.push({ id: r.id, fields: r.fields }))
-    next()
-  })
-  return records
+  const recs = await base(tableId).select({ pageSize: 100 }).all()
+  return recs.map(r => ({ id: r.id, fields: r.fields }))
 }
 
 export async function GET(request) {

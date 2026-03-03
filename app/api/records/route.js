@@ -14,10 +14,13 @@ export async function POST(request) {
   try {
     const { table, fields } = await request.json()
     if (!TABLE_IDS[table]) return Response.json({ error: 'Invalid table' }, { status: 400 })
+    console.log('[API POST]', table, JSON.stringify(fields))
     const record = await base(TABLE_IDS[table]).create(fields)
     return Response.json({ id: record.id, fields: record.fields })
   } catch (err) {
-    return Response.json({ error: err.message }, { status: 500 })
+    const detail = err.error || err.statusCode ? `[${err.statusCode}] ${err.error}: ${err.message}` : err.message
+    console.error('[API POST error]', detail, JSON.stringify(err))
+    return Response.json({ error: detail }, { status: 500 })
   }
 }
 
@@ -25,9 +28,12 @@ export async function PATCH(request) {
   try {
     const { table, id, fields } = await request.json()
     if (!TABLE_IDS[table]) return Response.json({ error: 'Invalid table' }, { status: 400 })
+    console.log('[API PATCH]', table, id, JSON.stringify(fields))
     const record = await base(TABLE_IDS[table]).update(id, fields)
     return Response.json({ id: record.id, fields: record.fields })
   } catch (err) {
-    return Response.json({ error: err.message }, { status: 500 })
+    const detail = err.error || err.statusCode ? `[${err.statusCode}] ${err.error}: ${err.message}` : err.message
+    console.error('[API PATCH error]', detail, JSON.stringify(err))
+    return Response.json({ error: detail }, { status: 500 })
   }
 }
