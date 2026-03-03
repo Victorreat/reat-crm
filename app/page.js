@@ -1484,6 +1484,8 @@ export default function CRM() {
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [selected, setSelected] = useState({ listing: null, deal: null, property: null, tenant: null })
+  const [collapsed, setCollapsed] = useState({})
+  const toggleSection = key => setCollapsed(c => ({ ...c, [key]: !c[key] }))
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -1649,8 +1651,11 @@ export default function CRM() {
                 </div>
 
                 {/* Pipeline by close date */}
-                <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px' }}>Pipeline by Close Date</div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', marginBottom:'20px' }}>
+                <div onClick={() => toggleSection('timeline')} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', marginBottom:'10px' }}>
+                  <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em' }}>Pipeline by Close Date</div>
+                  <span style={{ fontSize:'12px', color:'#9ca3af' }}>{collapsed['timeline'] ? '▶' : '▼'}</span>
+                </div>
+                {!collapsed['timeline'] && <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', marginBottom:'20px' }}>
                   {BUCKET_LABELS.map(b => {
                     const bDeals = buckets[b.key]
                     const bComm = bDeals.reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
@@ -1683,11 +1688,14 @@ export default function CRM() {
                       ))}
                     </div>
                   )}
-                </div>
+                </div>}
 
                 {/* Active Deals */}
-                <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px' }}>Active Deals</div>
-                <div style={{ ...card, marginBottom:'20px' }}>
+                <div onClick={() => toggleSection('deals')} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', marginBottom:'10px' }}>
+                  <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em' }}>Active Deals ({activeDeals.length})</div>
+                  <span style={{ fontSize:'12px', color:'#9ca3af' }}>{collapsed['deals'] ? '▶' : '▼'}</span>
+                </div>
+                {!collapsed['deals'] && <div style={{ ...card, marginBottom:'20px' }}>
                   <table style={tbl}>
                     <thead><tr><th style={th}>Deal</th><th style={th}>Tenant</th><th style={th}>Stage</th><th style={th}>Gross Comm.</th><th style={th}>Your 80%</th><th style={th}>Close Date</th></tr></thead>
                     <tbody>{activeDeals.map(d => (
@@ -1701,11 +1709,14 @@ export default function CRM() {
                       </tr>
                     ))}</tbody>
                   </table>
-                </div>
+                </div>}
 
-                {/* Active Listings */}
-                <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px' }}>Listing Pipeline</div>
-                <div style={{ ...card, marginBottom:'20px' }}>
+                {/* Listing Pipeline */}
+                <div onClick={() => toggleSection('listings')} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', marginBottom:'10px' }}>
+                  <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em' }}>Listing Pipeline ({lists.filter(l => fv(l.fields,F.lists.status) === 'Active').length})</div>
+                  <span style={{ fontSize:'12px', color:'#9ca3af' }}>{collapsed['listings'] ? '▶' : '▼'}</span>
+                </div>
+                {!collapsed['listings'] && <div style={{ ...card, marginBottom:'20px' }}>
                   <table style={tbl}>
                     <thead><tr><th style={th}>Listing</th><th style={th}>Structure</th><th style={th}>Asking Price</th><th style={th}>Status</th><th style={th}>Gross Comm.</th><th style={th}>Your 80%</th></tr></thead>
                     <tbody>{lists.filter(l => fv(l.fields,F.lists.status) === 'Active').map(l => (
@@ -1719,7 +1730,7 @@ export default function CRM() {
                       </tr>
                     ))}</tbody>
                   </table>
-                </div>
+                </div>}
 
                 {/* Follow-ups due today */}
                 {todayFU.length > 0 && (
