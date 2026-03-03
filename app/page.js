@@ -1193,6 +1193,269 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
   )
 }
 
+// ─── GTD Page ─────────────────────────────────────────────────────────────────
+function GTDPage({ acts, onRefresh }) {
+  const now = new Date()
+  const todayStr = now.toDateString()
+  const [actTab, setActTab] = useState('capture')
+  const [captureText, setCaptureText] = useState('')
+  const [captureSaving, setCaptureSaving] = useState(false)
+  const [clarifyIdx, setClarifyIdx] = useState(0)
+  const [updating, setUpdating] = useState(null)
+
+  const inbox = acts.filter(a => !fv(a.fields, F.acts.status) && (a.fields[F.acts.capture] || fv(a.fields, F.acts.desc)))
+  const nextActions = acts.filter(a => fv(a.fields, F.acts.status) === 'Deferred')
+  const waitingFor = acts.filter(a => fv(a.fields, F.acts.status) === 'Delegated')
+  const someday = acts.filter(a => fv(a.fields, F.acts.status) === 'Incubate')
+  const recent = [...acts].sort((a,b) => (b.fields[F.acts.date]||'').localeCompare(a.fields[F.acts.date]||'')).slice(0,25)
+
+  const overdueFU = acts.filter(a => {
+    const fd = a.fields[F.acts.fuDate]
+    return fd && !a.fields[F.acts.fuDone] && new Date(fd) < now && new Date(fd).toDateString() !== todayStr
+  })
+  const dueTodayFU = acts.filter(a => {
+    const fd = a.fields[F.acts.fuDate]
+    return fd && !a.fields[F.acts.fuDone] && new Date(fd).toDateString() === todayStr
+  })
+
+  const handleCapture = async () => {
+    if (!captureText.trim()) return
+    setCaptureSaving(true)
+    try {
+      await apiCreate('acts', {
+        'Activity': captureText.trim(),
+        'Capture': captureText.trim(),
+        'Date': now.toISOString().split('T')[0],
+      })
+      setCaptureText('')
+      await onRefresh()
+    } catch(e) { alert('Error: ' + e.message) }
+    setCaptureSaving(false)
+  }
+
+  const clarifyItem = async (id, status, nextAction) => {
+    setUpdating(id)
+    try {
+      const fields = { 'Status': status }
+      if (nextAction) fields['Next Action'] = nextAction
+      await apiUpdate('acts', id, fields)
+      setClarifyIdx(0)
+      await onRefresh()
+    } catch(e) { alert('Error: ' + e.message) }
+    setUpdating(null)
+  }
+
+  const CONTEXTS = ['@Call','@Email','@Computer','@Car','@Errand','@Anywhere']
+  const byContext = {}
+  CONTEXTS.forEach(c => { byContext[c] = nextActions.filter(a => fv(a.fields, F.acts.nextAction) === c) })
+  const uncontexted = nextActions.filter(a => !fv(a.fields, F.acts.nextAction))
+
+  const TABS = [
+    { id: 'capture', label: '⚡ Capture' },
+    { id: 'clarify', label: `🔍 Clarify (${inbox.length})`, red: inbox.length > 0 },
+    { id: 'next', label: `✅ Next Actions (${nextActions.length})` },
+    { id: 'waiting', label: `⏳ Waiting (${waitingFor.length})` },
+    { id: 'someday', label: `💭 Someday (${someday.length})` },
+    { id: 'followups', label: `🔴 Follow-Ups (${overdueFU.length + dueTodayFU.length})`, red: overdueFU.length > 0 },
+    { id: 'log', label: 'All Activity' },
+  ]
+
+  const GtdRow = ({ a }) => (
+    <tr key={a.id}>
+      <td style={td}>
+        <div style={{fontWeight:500}}>{fv(a.fields,F.acts.capture) || fv(a.fields,F.acts.desc) || '—'}</div>
+        {a.fields[F.acts.notes] && <div style={{fontSize:'11px',color:'#9ca3af',marginTop:'2px'}}>{a.fields[F.acts.notes]}</div>}
+      </td>
+      <td style={{...td,color:'#6b7280'}}>{fv(a.fields,F.acts.date)||'—'}</td>
+      <td style={{...td,color:'#6b7280',fontSize:'12px'}}>
+        {linked(a.fields,F.acts.linkedDeal)[0] ? '🤝 Deal' : linked(a.fields,F.acts.linkedProp)[0] ? '🏠 Property' : linked(a.fields,F.acts.linkedListing)[0] ? '📋 Listing' : '—'}
+      </td>
+      <td style={td}>
+        <button style={{...btnSmall, color:'#dc2626', borderColor:'#dc2626'}} disabled={!!updating}
+          onClick={() => clarifyItem(a.id, 'Done')}>✓ Done</button>
+      </td>
+    </tr>
+  )
+
+  return (
+    <div>
+      <div style={{display:'flex', gap:'6px', marginBottom:'16px', flexWrap:'wrap'}}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setActTab(t.id)} style={{
+            ...actTab===t.id ? btnPrimary : btnSecondary,
+            fontSize:'12px', padding:'6px 12px',
+            ...(t.red && actTab !== t.id ? {borderColor:'#dc2626',color:'#dc2626'} : {})
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {actTab === 'capture' && (
+        <div>
+          <div style={{...card, padding:'16px', marginBottom:'16px'}}>
+            <div style={{fontSize:'13px', fontWeight:700, marginBottom:'6px'}}>Brain Dump</div>
+            <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'10px'}}>Don't think — just dump. Capture everything, process in Clarify.</div>
+            <textarea
+              style={{...inp, minHeight:'100px', resize:'vertical', marginBottom:'10px'}}
+              placeholder="e.g. Call Drew re: Strongsville signal easement... Follow up with Tom on parking... Review 7 Brew LOI redlines..."
+              value={captureText}
+              onChange={e => setCaptureText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleCapture() }}
+            />
+            <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+              <button style={{...btnPrimary, opacity: captureSaving ? 0.6 : 1}} onClick={handleCapture} disabled={captureSaving}>
+                {captureSaving ? 'Saving...' : '⚡ Capture (⌘↵)'}
+              </button>
+              <span style={{fontSize:'11px', color:'#9ca3af'}}>Inbox: {inbox.length} items to process</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {actTab === 'clarify' && (
+        <div>
+          {inbox.length === 0 ? (
+            <div style={{...card, padding:'24px', textAlign:'center'}}>
+              <div style={{fontSize:'24px', marginBottom:'8px'}}>✅</div>
+              <div style={{fontWeight:700, marginBottom:'4px'}}>Inbox zero</div>
+              <div style={{fontSize:'13px', color:'#6b7280'}}>Everything's been processed.</div>
+            </div>
+          ) : (
+            <div>
+              <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'12px'}}>{inbox.length} items to process · Showing {clarifyIdx + 1} of {inbox.length}</div>
+              {(() => {
+                const item = inbox[clarifyIdx]
+                if (!item) return null
+                const text = fv(item.fields, F.acts.capture) || fv(item.fields, F.acts.desc)
+                return (
+                  <div style={{...card, padding:'20px'}}>
+                    <div style={{fontSize:'16px', fontWeight:600, marginBottom:'6px', lineHeight:1.4}}>{text}</div>
+                    <div style={{fontSize:'12px', color:'#9ca3af', marginBottom:'20px'}}>{fv(item.fields, F.acts.date)}</div>
+                    <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px'}}>Is it actionable?</div>
+                    <div style={{display:'flex', gap:'8px', marginBottom:'16px', flexWrap:'wrap'}}>
+                      <button style={{...btnSecondary, fontSize:'12px', color:'#dc2626', borderColor:'#dc2626'}} disabled={!!updating} onClick={() => clarifyItem(item.id, 'Trash')}>🗑 Trash</button>
+                      <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating} onClick={() => clarifyItem(item.id, 'Incubate')}>💭 Someday/Maybe</button>
+                      <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating} onClick={() => clarifyItem(item.id, 'Reference')}>📁 Reference</button>
+                    </div>
+                    <div style={{borderTop:'1px solid #e2dcc8', paddingTop:'16px', marginBottom:'10px'}}>
+                      <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px'}}>Actionable — what's the next step?</div>
+                      <div style={{display:'flex', gap:'8px', marginBottom:'12px', flexWrap:'wrap'}}>
+                        <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating} onClick={() => clarifyItem(item.id, 'Project')}>📋 Project (multi-step)</button>
+                        <button style={{...btnSecondary, fontSize:'12px', color:'#7c3aed', borderColor:'#7c3aed'}} disabled={!!updating} onClick={() => clarifyItem(item.id, 'Delegated')}>👤 Delegate / Waiting For</button>
+                        <button style={{...btnSecondary, fontSize:'12px', color:'#316828', borderColor:'#316828'}} disabled={!!updating} onClick={() => clarifyItem(item.id, 'Done')}>⚡ Do it now (2 min)</button>
+                      </div>
+                      <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Defer — pick context:</div>
+                      <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
+                        {CONTEXTS.map(c => (
+                          <button key={c} style={{...btnSmall, background:'#e8f0e9', color:'#316828', borderColor:'#316828', fontSize:'12px', padding:'5px 10px'}}
+                            disabled={!!updating} onClick={() => clarifyItem(item.id, 'Deferred', c)}>
+                            {updating === item.id ? '...' : c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {inbox.length > 1 && (
+                      <div style={{marginTop:'16px', borderTop:'1px solid #f0edd8', paddingTop:'12px'}}>
+                        <button style={{...btnSecondary, fontSize:'12px'}} onClick={() => setClarifyIdx(i => (i+1) % inbox.length)}>Skip → next item</button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {actTab === 'next' && (
+        <div>
+          {nextActions.length === 0
+            ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>No next actions. Process your inbox in Clarify.</div>
+            : <div>
+                {uncontexted.length > 0 && (
+                  <div style={{marginBottom:'20px'}}>
+                    <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>No Context Set ({uncontexted.length})</div>
+                    <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+                    <tbody>{uncontexted.map(a => <GtdRow key={a.id} a={a} />)}</tbody></table></div>
+                  </div>
+                )}
+                {CONTEXTS.map(c => byContext[c].length > 0 && (
+                  <div key={c} style={{marginBottom:'20px'}}>
+                    <div style={{fontSize:'12px', fontWeight:700, color:'#7c3aed', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>{c} ({byContext[c].length})</div>
+                    <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+                    <tbody>{byContext[c].map(a => <GtdRow key={a.id} a={a} />)}</tbody></table></div>
+                  </div>
+                ))}
+              </div>
+          }
+        </div>
+      )}
+
+      {actTab === 'waiting' && (
+        <div>
+          {waitingFor.length === 0
+            ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>Nothing delegated or waiting on others.</div>
+            : <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+              <tbody>{waitingFor.map(a => <GtdRow key={a.id} a={a} />)}</tbody></table></div>
+          }
+        </div>
+      )}
+
+      {actTab === 'someday' && (
+        <div>
+          {someday.length === 0
+            ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>Nothing parked in Someday/Maybe.</div>
+            : <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+              <tbody>{someday.map(a => <GtdRow key={a.id} a={a} />)}</tbody></table></div>
+          }
+        </div>
+      )}
+
+      {actTab === 'followups' && (
+        <div>
+          {overdueFU.length > 0 && (
+            <div style={{marginBottom:'20px'}}>
+              <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🔴 Overdue ({overdueFU.length})</div>
+              <div style={card}><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
+              <tbody>{overdueFU.map(a => (
+                <tr key={a.id} style={{background:'#fff9f9'}}>
+                  <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
+                  <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
+                  <td style={{...td,color:'#dc2626',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)}</td>
+                  <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linked(a.fields,F.acts.linkedDeal)[0]?'🤝 Deal':linked(a.fields,F.acts.linkedProp)[0]?'🏠 Property':linked(a.fields,F.acts.linkedListing)[0]?'📋 Listing':'—'}</td>
+                </tr>
+              ))}</tbody></table></div>
+            </div>
+          )}
+          {dueTodayFU.length > 0 && (
+            <div style={{marginBottom:'20px'}}>
+              <div style={{fontSize:'12px', fontWeight:700, color:'#c69425', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🟡 Due Today ({dueTodayFU.length})</div>
+              <div style={card}><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
+              <tbody>{dueTodayFU.map(a => (
+                <tr key={a.id}>
+                  <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
+                  <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
+                  <td style={{...td,color:'#c69425',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)}</td>
+                  <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linked(a.fields,F.acts.linkedDeal)[0]?'🤝 Deal':linked(a.fields,F.acts.linkedProp)[0]?'🏠 Property':linked(a.fields,F.acts.linkedListing)[0]?'📋 Listing':'—'}</td>
+                </tr>
+              ))}</tbody></table></div>
+            </div>
+          )}
+          {overdueFU.length === 0 && dueTodayFU.length === 0 && (
+            <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>No follow-ups due. You're clear.</div>
+          )}
+        </div>
+      )}
+
+      {actTab === 'log' && (
+        <div>
+          <div style={{fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Last 25 Activities</div>
+          <ActsTable acts={recent} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function CRM() {
   const { user } = useUser()
@@ -1542,298 +1805,8 @@ export default function CRM() {
           )}
 
           {/* Activity / GTD */}
-          {!detail && view === 'activities' && (() => {
-            const now = new Date()
-            const todayStr = now.toDateString()
-            const [actTab, setActTab] = React.useState('capture')
-            const [captureText, setCaptureText] = React.useState('')
-            const [captureSaving, setCaptureSaving] = React.useState(false)
-            const [clarifyIdx, setClarifyIdx] = React.useState(0)
-            const [updating, setUpdating] = React.useState(null)
+          {!detail && view === 'activities' && <GTDPage acts={acts} onRefresh={onRefresh} />}
 
-            // GTD buckets based on Status field
-            const inbox = acts.filter(a => !fv(a.fields, F.acts.status) && (a.fields[F.acts.capture] || fv(a.fields, F.acts.desc)))
-            const nextActions = acts.filter(a => fv(a.fields, F.acts.status) === 'Deferred')
-            const waitingFor = acts.filter(a => fv(a.fields, F.acts.status) === 'Delegated')
-            const someday = acts.filter(a => fv(a.fields, F.acts.status) === 'Incubate')
-            const projects = acts.filter(a => fv(a.fields, F.acts.status) === 'Project')
-            const recent = [...acts].sort((a,b) => (b.fields[F.acts.date]||'').localeCompare(a.fields[F.acts.date]||'')).slice(0,25)
-
-            // Follow-up alerts (keep these working)
-            const overdueFU = acts.filter(a => {
-              const fd = a.fields[F.acts.fuDate]
-              return fd && !a.fields[F.acts.fuDone] && new Date(fd) < now && new Date(fd).toDateString() !== todayStr
-            })
-            const dueTodayFU = acts.filter(a => {
-              const fd = a.fields[F.acts.fuDate]
-              return fd && !a.fields[F.acts.fuDone] && new Date(fd).toDateString() === todayStr
-            })
-
-            const handleCapture = async () => {
-              if (!captureText.trim()) return
-              setCaptureSaving(true)
-              try {
-                await apiCreate('acts', {
-                  'Activity': captureText.trim(),
-                  'Capture': captureText.trim(),
-                  'Date': now.toISOString().split('T')[0],
-                })
-                setCaptureText('')
-                await onRefresh()
-              } catch(e) { alert('Error: ' + e.message) }
-              setCaptureSaving(false)
-            }
-
-            const clarifyItem = async (id, status, nextAction) => {
-              setUpdating(id)
-              try {
-                const fields = { 'Status': status }
-                if (nextAction) fields['Next Action'] = nextAction
-                await apiUpdate('acts', id, fields)
-                setClarifyIdx(0)
-                await onRefresh()
-              } catch(e) { alert('Error: ' + e.message) }
-              setUpdating(null)
-            }
-
-            // Next actions grouped by context
-            const CONTEXTS = ['@Call','@Email','@Computer','@Car','@Errand','@Anywhere']
-            const byContext = {}
-            CONTEXTS.forEach(c => { byContext[c] = nextActions.filter(a => fv(a.fields, F.acts.nextAction) === c) })
-            const uncontexted = nextActions.filter(a => !fv(a.fields, F.acts.nextAction))
-
-            const TABS = [
-              { id: 'capture', label: '⚡ Capture' },
-              { id: 'clarify', label: `🔍 Clarify (${inbox.length})`, red: inbox.length > 0 },
-              { id: 'next', label: `✅ Next Actions (${nextActions.length})` },
-              { id: 'waiting', label: `⏳ Waiting (${waitingFor.length})` },
-              { id: 'someday', label: `💭 Someday (${someday.length})` },
-              { id: 'followups', label: `🔴 Follow-Ups (${overdueFU.length + dueTodayFU.length})`, red: overdueFU.length > 0 },
-              { id: 'log', label: 'All Activity' },
-            ]
-
-            const GtdRow = ({ a, showContext }) => (
-              <tr key={a.id}>
-                <td style={td}>
-                  <div style={{fontWeight:500}}>{fv(a.fields,F.acts.capture) || fv(a.fields,F.acts.desc) || '—'}</div>
-                  {a.fields[F.acts.notes] && <div style={{fontSize:'11px',color:'#9ca3af',marginTop:'2px'}}>{a.fields[F.acts.notes]}</div>}
-                </td>
-                {showContext && <td style={{...td,color:'#7c3aed',fontWeight:600}}>{fv(a.fields,F.acts.nextAction)||'—'}</td>}
-                <td style={{...td,color:'#6b7280'}}>{fv(a.fields,F.acts.date)||'—'}</td>
-                <td style={{...td,color:'#6b7280',fontSize:'12px'}}>
-                  {linked(a.fields,F.acts.linkedDeal)[0] ? '🤝 Deal' : linked(a.fields,F.acts.linkedProp)[0] ? '🏠 Property' : linked(a.fields,F.acts.linkedListing)[0] ? '📋 Listing' : '—'}
-                </td>
-                <td style={td}>
-                  <button style={{...btnSmall, color:'#dc2626', borderColor:'#dc2626'}} disabled={!!updating}
-                    onClick={() => clarifyItem(a.id, 'Done')}>✓ Done</button>
-                </td>
-              </tr>
-            )
-
-            return (
-              <div>
-                {/* Tab bar */}
-                <div style={{display:'flex', gap:'6px', marginBottom:'16px', flexWrap:'wrap'}}>
-                  {TABS.map(t => (
-                    <button key={t.id} onClick={() => setActTab(t.id)} style={{
-                      ...actTab===t.id ? btnPrimary : btnSecondary,
-                      fontSize:'12px', padding:'6px 12px',
-                      ...(t.red && actTab !== t.id ? {borderColor:'#dc2626',color:'#dc2626'} : {})
-                    }}>{t.label}</button>
-                  ))}
-                </div>
-
-                {/* ── CAPTURE ── */}
-                {actTab === 'capture' && (
-                  <div>
-                    <div style={{...card, padding:'16px', marginBottom:'16px'}}>
-                      <div style={{fontSize:'13px', fontWeight:700, marginBottom:'6px'}}>Brain Dump</div>
-                      <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'10px'}}>Don't think — just dump. Capture everything, process in Clarify.</div>
-                      <textarea
-                        style={{...inp, minHeight:'100px', resize:'vertical', marginBottom:'10px'}}
-                        placeholder="e.g. Call Drew re: Strongsville signal easement... Follow up with Tom on parking... Review 7 Brew LOI redlines..."
-                        value={captureText}
-                        onChange={e => setCaptureText(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleCapture() }}
-                      />
-                      <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                        <button style={{...btnPrimary, opacity: captureSaving ? 0.6 : 1}} onClick={handleCapture} disabled={captureSaving}>
-                          {captureSaving ? 'Saving...' : '⚡ Capture (⌘↵)'}
-                        </button>
-                        <span style={{fontSize:'11px', color:'#9ca3af'}}>Inbox: {inbox.length} items to process</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── CLARIFY ── */}
-                {actTab === 'clarify' && (
-                  <div>
-                    {inbox.length === 0 ? (
-                      <div style={{...card, padding:'24px', textAlign:'center'}}>
-                        <div style={{fontSize:'24px', marginBottom:'8px'}}>✅</div>
-                        <div style={{fontWeight:700, marginBottom:'4px'}}>Inbox zero</div>
-                        <div style={{fontSize:'13px', color:'#6b7280'}}>Everything's been processed.</div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'12px'}}>{inbox.length} items to process · Showing {clarifyIdx + 1} of {inbox.length}</div>
-                        {(() => {
-                          const item = inbox[clarifyIdx]
-                          if (!item) return null
-                          const text = fv(item.fields, F.acts.capture) || fv(item.fields, F.acts.desc)
-                          return (
-                            <div style={{...card, padding:'20px'}}>
-                              {/* The item */}
-                              <div style={{fontSize:'16px', fontWeight:600, marginBottom:'6px', lineHeight:1.4}}>{text}</div>
-                              <div style={{fontSize:'12px', color:'#9ca3af', marginBottom:'20px'}}>{fv(item.fields, F.acts.date)}</div>
-
-                              {/* Decision tree */}
-                              <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px'}}>Is it actionable?</div>
-
-                              {/* NOT actionable */}
-                              <div style={{display:'flex', gap:'8px', marginBottom:'16px', flexWrap:'wrap'}}>
-                                <button style={{...btnSecondary, fontSize:'12px', color:'#dc2626', borderColor:'#dc2626'}} disabled={!!updating}
-                                  onClick={() => clarifyItem(item.id, 'Trash')}>🗑 Trash</button>
-                                <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating}
-                                  onClick={() => clarifyItem(item.id, 'Incubate')}>💭 Someday/Maybe</button>
-                                <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating}
-                                  onClick={() => clarifyItem(item.id, 'Reference')}>📁 Reference</button>
-                              </div>
-
-                              <div style={{borderTop:'1px solid #e2dcc8', paddingTop:'16px', marginBottom:'10px'}}>
-                                <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px'}}>Actionable — what's the next step?</div>
-                                <div style={{display:'flex', gap:'8px', marginBottom:'12px', flexWrap:'wrap'}}>
-                                  <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating}
-                                    onClick={() => clarifyItem(item.id, 'Project')}>📋 Project (multi-step)</button>
-                                  <button style={{...btnSecondary, fontSize:'12px', color:'#7c3aed', borderColor:'#7c3aed'}} disabled={!!updating}
-                                    onClick={() => clarifyItem(item.id, 'Delegated')}>👤 Delegate / Waiting For</button>
-                                  <button style={{...btnSecondary, fontSize:'12px', color:'#316828', borderColor:'#316828'}} disabled={!!updating}
-                                    onClick={() => clarifyItem(item.id, 'Done')}>⚡ Do it now (2 min)</button>
-                                </div>
-
-                                {/* Defer with context */}
-                                <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Defer — pick context:</div>
-                                <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
-                                  {CONTEXTS.map(c => (
-                                    <button key={c} style={{...btnSmall, background:'#e8f0e9', color:'#316828', borderColor:'#316828', fontSize:'12px', padding:'5px 10px'}}
-                                      disabled={!!updating}
-                                      onClick={() => clarifyItem(item.id, 'Deferred', c)}>
-                                      {updating === item.id ? '...' : c}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Skip */}
-                              {inbox.length > 1 && (
-                                <div style={{marginTop:'16px', borderTop:'1px solid #f0edd8', paddingTop:'12px'}}>
-                                  <button style={{...btnSecondary, fontSize:'12px'}} onClick={() => setClarifyIdx(i => (i+1) % inbox.length)}>Skip → next item</button>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ── NEXT ACTIONS ── */}
-                {actTab === 'next' && (
-                  <div>
-                    {nextActions.length === 0 ? (
-                      <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>No next actions. Process your inbox in Clarify.</div>
-                    ) : (
-                      <div>
-                        {uncontexted.length > 0 && (
-                          <div style={{marginBottom:'20px'}}>
-                            <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>No Context Set ({uncontexted.length})</div>
-                            <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
-                            <tbody>{uncontexted.map(a => <GtdRow key={a.id} a={a} showContext={false} />)}</tbody></table></div>
-                          </div>
-                        )}
-                        {CONTEXTS.map(c => byContext[c].length > 0 && (
-                          <div key={c} style={{marginBottom:'20px'}}>
-                            <div style={{fontSize:'12px', fontWeight:700, color:'#7c3aed', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>{c} ({byContext[c].length})</div>
-                            <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
-                            <tbody>{byContext[c].map(a => <GtdRow key={a.id} a={a} showContext={false} />)}</tbody></table></div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ── WAITING FOR ── */}
-                {actTab === 'waiting' && (
-                  <div>
-                    {waitingFor.length === 0
-                      ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>Nothing delegated or waiting on others.</div>
-                      : <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
-                        <tbody>{waitingFor.map(a => <GtdRow key={a.id} a={a} showContext={false} />)}</tbody></table></div>
-                    }
-                  </div>
-                )}
-
-                {/* ── SOMEDAY/MAYBE ── */}
-                {actTab === 'someday' && (
-                  <div>
-                    {someday.length === 0
-                      ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>Nothing parked in Someday/Maybe.</div>
-                      : <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
-                        <tbody>{someday.map(a => <GtdRow key={a.id} a={a} showContext={false} />)}</tbody></table></div>
-                    }
-                  </div>
-                )}
-
-                {/* ── FOLLOW-UPS ── */}
-                {actTab === 'followups' && (
-                  <div>
-                    {overdueFU.length > 0 && (
-                      <div style={{marginBottom:'20px'}}>
-                        <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🔴 Overdue ({overdueFU.length})</div>
-                        <div style={card}><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
-                        <tbody>{overdueFU.map(a => (
-                          <tr key={a.id} style={{background:'#fff9f9'}}>
-                            <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
-                            <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
-                            <td style={{...td,color:'#dc2626',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)}</td>
-                            <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linked(a.fields,F.acts.linkedDeal)[0]?'🤝 Deal':linked(a.fields,F.acts.linkedProp)[0]?'🏠 Property':linked(a.fields,F.acts.linkedListing)[0]?'📋 Listing':'—'}</td>
-                          </tr>
-                        ))}</tbody></table></div>
-                      </div>
-                    )}
-                    {dueTodayFU.length > 0 && (
-                      <div style={{marginBottom:'20px'}}>
-                        <div style={{fontSize:'12px', fontWeight:700, color:'#c69425', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🟡 Due Today ({dueTodayFU.length})</div>
-                        <div style={card}><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
-                        <tbody>{dueTodayFU.map(a => (
-                          <tr key={a.id}>
-                            <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
-                            <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
-                            <td style={{...td,color:'#c69425',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)}</td>
-                            <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linked(a.fields,F.acts.linkedDeal)[0]?'🤝 Deal':linked(a.fields,F.acts.linkedProp)[0]?'🏠 Property':linked(a.fields,F.acts.linkedListing)[0]?'📋 Listing':'—'}</td>
-                          </tr>
-                        ))}</tbody></table></div>
-                      </div>
-                    )}
-                    {overdueFU.length === 0 && dueTodayFU.length === 0 && (
-                      <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>No follow-ups due. You're clear.</div>
-                    )}
-                  </div>
-                )}
-
-                {/* ── ALL LOG ── */}
-                {actTab === 'log' && (
-                  <div>
-                    <div style={{fontSize:'12px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Last 25 Activities</div>
-                    <ActsTable acts={recent} />
-                  </div>
-                )}
-              </div>
-            )
-          })()}
 
           {/* Calendar */}
           {!detail && view === 'calendar' && (() => {
