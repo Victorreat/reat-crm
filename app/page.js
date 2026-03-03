@@ -1589,7 +1589,7 @@ export default function CRM() {
           ))}
         </nav>
         <div style={{ padding: '12px 8px', borderTop: '1px solid #e2dcc8' }}>
-          <img src="/reat-logo.png" alt="REAT Logo" style={{ width: '100%', padding: '0 4px', marginBottom: '10px', boxSizing: 'border-box', display: 'block' }} />
+          <img src="/reat-logo.png" alt="REAT Logo" style={{ width: '80px', display: 'block', margin: '0 auto 10px' }} />
           <button style={{ ...btnPrimary, width: '100%', textAlign: 'center', marginBottom: '10px', padding: '10px' }} onClick={() => setModal('quickadd')}>+ Add</button>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px', paddingLeft: '4px' }}>{user?.firstName} {user?.lastName}</div>
           <UserButton afterSignOutUrl="/sign-in" />
@@ -1783,10 +1783,13 @@ export default function CRM() {
 
               {/* ── Property Pipeline ── */}
               <div style={{ borderTop: '2px solid #e2dcc8', paddingTop: '20px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>
-                  Property Pipeline
+                <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: '10px' }} onClick={() => toggleSection('propPipeline')}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    Property Pipeline
+                  </div>
+                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#9ca3af' }}>{collapsed['propPipeline'] ? '▶' : '▼'}</span>
                 </div>
-                <div style={card}>
+                {!collapsed['propPipeline'] && <div style={card}>
                   <table style={tbl}>
                     <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Attributes</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
                     <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => (
@@ -1800,7 +1803,7 @@ export default function CRM() {
                       </tr>
                     ))}</tbody>
                   </table>
-                </div>
+                </div>}
               </div>
             </div>
           )}
