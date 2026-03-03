@@ -709,7 +709,10 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
         <button style={btnBack} onClick={onBack}>← Back</button>
         <div style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'DM Serif Display, serif' }}>{fv(f, F.props.addr)}{fv(f, F.props.city) ? ', ' + fv(f, F.props.city) : ''}</div>
         <Badge value={f[F.props.status]} />
-        <button style={{ marginLeft: 'auto', ...btnPrimary }} onClick={() => setModal('activity')}>+ Log Activity</button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+          <button style={btnSecondary} onClick={() => setModal('edit')}>Edit Property</button>
+          <button style={btnPrimary} onClick={() => setModal('activity')}>+ Log Activity</button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' }}>
@@ -747,6 +750,7 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
       <ActsTable acts={propActs} />
 
       {modal === 'activity' && <Modal title="Log Activity" onClose={() => setModal(null)}><ActivityForm props={allData.props} deals={allData.deals} lists={allData.lists} prefillPropId={property.id} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
+      {modal === 'edit' && <Modal title="Edit Property" onClose={() => setModal(null)}><PropertyForm data={property} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
     </div>
   )
 }
