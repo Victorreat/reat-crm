@@ -1814,18 +1814,20 @@ export default function CRM() {
                 return groups.map(({ key, label, deals: tDeals }) => {
                 const tActive = tDeals.filter(d => !['Executed','Dead'].includes(fv(d.fields, F.deals.stage)))
                 const tPipe = tActive.reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
+                const groupKey = 'dg_' + key
                 return (
                   <div key={key} style={{ marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#316828', cursor: key !== '__other__' ? 'pointer' : 'default', textDecoration: key !== '__other__' ? 'underline' : 'none', textDecorationColor: '#c69425' }} onClick={() => key !== '__other__' && setSelected(s => ({...s, tenant: key}))}>{label}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', cursor: 'pointer' }} onClick={() => toggleSection(groupKey)}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#316828', textDecoration: key !== '__other__' ? 'underline' : 'none', textDecorationColor: '#c69425' }} onClick={e => { if (key !== '__other__') { e.stopPropagation(); setSelected(s => ({...s, tenant: key})) } }}>{label}</div>
                       <span style={{ fontSize: '12px', color: '#9ca3af' }}>{tActive.length} active · {fmt$(tPipe)}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#9ca3af' }}>{collapsed[groupKey] ? '▶' : '▼'}</span>
                     </div>
-                    <div style={card}>
+                    {!collapsed[groupKey] && <div style={card}>
                       <table style={tbl}>
                         <thead><tr><th style={th}>Deal</th><th style={th}>Stage</th><th style={th}>Structure</th><th style={th}>Est. Commission</th><th style={th}>Close Date</th></tr></thead>
                         <tbody>{tDeals.map(d => <tr key={d.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(s => ({...s, deal:d}))}><td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)||'—'}</div></td><td style={td}><Badge value={d.fields[F.deals.stage]} /></td><td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.structure)||'—'}</td><td style={{...td,color:'#c69425',fontWeight:600}}>{fmt$(d.fields[F.deals.estComm])}</td><td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.closeDate)||'—'}</td></tr>)}</tbody>
                       </table>
-                    </div>
+                    </div>}
                   </div>
                 )
               })})()}
