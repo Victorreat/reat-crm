@@ -1770,14 +1770,17 @@ export default function CRM() {
             <div>
               {/* ── Prospecting Call Sheet ── */}
               <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>
-                  📞 Prospecting Call Sheet
+                <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: '10px' }} onClick={() => toggleSection('prospecting')}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    📞 Prospecting Call Sheet
+                  </div>
+                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#9ca3af' }}>{collapsed['prospecting'] ? '▶' : '▼'}</span>
                 </div>
-                <ProspectingPage
+                {!collapsed['prospecting'] && <ProspectingPage
                   allData={allData}
                   onRefresh={onRefresh}
                   onSelectProperty={p => setSelected(s => ({...s, property: p}))}
-                />
+                />}
               </div>
 
               {/* ── Property Pipeline ── */}
