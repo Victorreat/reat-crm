@@ -846,7 +846,7 @@ function PropertyForm({ data, onSave, onCancel }) {
   const [city, setCity] = useState(g('City'))
   const [state, setState] = useState(g('State') || 'OH')
   const [zip, setZip] = useState(g('Zip'))
-  const [attrs, setAttrs] = useState(fv(data?.fields, F.props.attrs) || '')
+  const [attrs, setAttrs] = useState(Array.isArray(data?.fields?.[F.props.attrs]) ? data.fields[F.props.attrs] : [])
   const [acreage, setAcreage] = useState(g('Acreage'))
   const [sf, setSf] = useState(g('Building SF'))
   const [zoning, setZoning] = useState(g('Zoning'))
@@ -864,7 +864,7 @@ function PropertyForm({ data, onSave, onCancel }) {
     const fields = {
       'Address': addr, 'City': city||undefined, 'State': state||undefined,
       'Zip': zip||undefined,
-      'Property Attributes': attrs||undefined,
+      'Property Attributes': attrs.length > 0 ? attrs : undefined,
       'Acreage': acreage ? parseFloat(acreage) : undefined,
       'Building SF': sf ? parseInt(sf) : undefined,
       'Zoning': zoning||undefined, 'Prospecting Status': status,
@@ -887,8 +887,16 @@ function PropertyForm({ data, onSave, onCancel }) {
         <div style={fgrp}><label style={flbl}>City</label><input style={inp} value={city} onChange={e=>setCity(e.target.value)} /></div>
         <div style={fgrp}><label style={flbl}>Zip</label><input style={inp} value={zip} onChange={e=>setZip(e.target.value)} /></div>
       </div>
-      <div style={row2}>
-        <div style={fgrp}><label style={flbl}>Property Attributes</label><input style={inp} value={attrs} onChange={e=>setAttrs(e.target.value)} placeholder="e.g. Hard Corner, Freestanding, Drive-Thru" /></div>
+      <div style={fgrp}>
+        <label style={flbl}>Property Attributes</label>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'4px 10px', padding:'8px 10px', border:'1px solid #e2dcc8', borderRadius:'6px', background:'#fff' }}>
+          {['Hard Corner','Freestanding','Multi-Tenant/Strip Center','Land','Out Parcel','End Cap','Drive-Thru','Industrial','Bank','Medical','Office','Mixed Use','Multifamily','Mall','Power Center'].map(opt => (
+            <label key={opt} style={{ display:'flex', alignItems:'center', gap:'6px', fontSize:'13px', cursor:'pointer', padding:'2px 0' }}>
+              <input type="checkbox" checked={attrs.includes(opt)} onChange={e => setAttrs(a => e.target.checked ? [...a, opt] : a.filter(x => x !== opt))} />
+              {opt}
+            </label>
+          ))}
+        </div>
       </div>
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Acreage</label><input style={inp} type="number" step="0.01" value={acreage} onChange={e=>setAcreage(e.target.value)} /></div>
