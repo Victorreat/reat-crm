@@ -492,7 +492,7 @@ function ActivityForm({ props, deals, lists, onSave, onCancel, prefillDealId, pr
 function Modal({ title, onClose, children, wide }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto' }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: '#fff', borderRadius: '12px', width: wide ? '700px' : '520px', maxWidth: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+      <div className="crm-modal-box" style={{ background: '#fff', borderRadius: '12px', width: wide ? '700px' : '520px', maxWidth: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #e2dcc8' }}>
           <div style={{ fontSize: '15px', fontWeight: 700 }}>{title}</div>
           <button style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9ca3af', cursor: 'pointer' }} onClick={onClose}>×</button>
@@ -550,14 +550,14 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' }}>
+      <div className="crm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' }}>
         <StatCard label="Deal Value" value={fmt$(f[F.deals.value])} />
         <StatCard label="Est. Commission" value={fmt$(f[F.deals.estComm])} color="#c69425" />
         <StatCard label="Comm. Rate" value={f[F.deals.commRate] ? (f[F.deals.commRate]*100).toFixed(2)+'%' : '—'} />
         <StatCard label="Close Date" value={fv(f, F.deals.closeDate) || '—'} color="#316828" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+      <div className="crm-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
           <div style={secTitle}>Deal Details</div>
           <DetailRow label="Tenant / Client" value={fv(f, F.deals.clientName)} />
@@ -632,14 +632,14 @@ function ListingDetail({ listing, allData, onBack, onRefresh }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' }}>
+      <div className="crm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' }}>
         <StatCard label="Asking Price" value={fmt$(f[F.lists.price])} />
         <StatCard label="Est. Commission" value={fmt$(f[F.lists.estComm])} color="#c69425" />
         <StatCard label="Acreage" value={linkedProp?.fields[F.props.acreage] || '—'} />
         <StatCard label="Building SF" value={linkedProp?.fields[F.props.sf] ? Number(linkedProp.fields[F.props.sf]).toLocaleString() : '—'} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+      <div className="crm-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
           <div style={secTitle}>Listing Details</div>
           <DetailRow label="Structure" value={fv(f, F.lists.type)} />
@@ -672,14 +672,14 @@ function ListingDetail({ listing, allData, onBack, onRefresh }) {
       {listDeals.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Linked Deals ({listDeals.length})</div>
-          <div style={card}><table style={tbl}><thead><tr><th style={th}>Deal</th><th style={th}>Stage</th><th style={th}>Est. Commission</th><th style={th}>Close Date</th></tr></thead><tbody>{listDeals.map(d=><tr key={d.id}><td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)}</div></td><td style={td}><Badge value={d.fields[F.deals.stage]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(d.fields[F.deals.estComm])}</td><td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.closeDate)}</td></tr>)}</tbody></table></div>
+          <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Deal</th><th style={th}>Stage</th><th style={th}>Est. Commission</th><th style={th}>Close Date</th></tr></thead><tbody>{listDeals.map(d=><tr key={d.id}><td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)}</div></td><td style={td}><Badge value={d.fields[F.deals.stage]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(d.fields[F.deals.estComm])}</td><td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.closeDate)}</td></tr>)}</tbody></table></div>
         </div>
       )}
 
       {listConts.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Contacts</div>
-          <div style={card}><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead><tbody>{listConts.map(c=><tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)}</td><td style={td}>{fv(c.fields,F.conts.phone)}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)}</td></tr>)}</tbody></table></div>
+          <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead><tbody>{listConts.map(c=><tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)}</td><td style={td}>{fv(c.fields,F.conts.phone)}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)}</td></tr>)}</tbody></table></div>
         </div>
       )}
 
@@ -715,14 +715,14 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' }}>
+      <div className="crm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' }}>
         <StatCard label="Acreage" value={f[F.props.acreage] || '—'} />
         <StatCard label="Building SF" value={f[F.props.sf] ? Number(f[F.props.sf]).toLocaleString() : '—'} />
         <StatCard label="Listings" value={propListings.length} />
         <StatCard label="Deals" value={propDeals.length} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+      <div className="crm-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
           <div style={secTitle}>Property Details</div>
           <DetailRow label="Address" value={fv(f, F.props.addr)} />
@@ -742,9 +742,9 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
         </div>
       </div>
 
-      {propListings.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Listings ({propListings.length})</div><div style={card}><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Structure</th><th style={th}>Price</th><th style={th}>Status</th><th style={th}>Est. Comm</th></tr></thead><tbody>{propListings.map(l=><tr key={l.id}><td style={td}><div style={{fontWeight:500}}>{fv(l.fields,F.lists.name)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(l.fields,F.lists.type)}</td><td style={td}>{fmt$(l.fields[F.lists.price])}</td><td style={td}><Badge value={l.fields[F.lists.status]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(l.fields[F.lists.estComm])}</td></tr>)}</tbody></table></div></div>}
-      {propDeals.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Deals ({propDeals.length})</div><div style={card}><table style={tbl}><thead><tr><th style={th}>Deal</th><th style={th}>Tenant</th><th style={th}>Stage</th><th style={th}>Est. Comm</th><th style={th}>Close Date</th></tr></thead><tbody>{propDeals.map(d=><tr key={d.id}><td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)}</div></td><td style={td}>{fv(d.fields,F.deals.clientName)}</td><td style={td}><Badge value={d.fields[F.deals.stage]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(d.fields[F.deals.estComm])}</td><td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.closeDate)}</td></tr>)}</tbody></table></div></div>}
-      {propConts.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Contacts</div><div style={card}><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead><tbody>{propConts.map(c=><tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)}</td><td style={td}>{fv(c.fields,F.conts.phone)}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)}</td></tr>)}</tbody></table></div></div>}
+      {propListings.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Listings ({propListings.length})</div><div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Structure</th><th style={th}>Price</th><th style={th}>Status</th><th style={th}>Est. Comm</th></tr></thead><tbody>{propListings.map(l=><tr key={l.id}><td style={td}><div style={{fontWeight:500}}>{fv(l.fields,F.lists.name)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(l.fields,F.lists.type)}</td><td style={td}>{fmt$(l.fields[F.lists.price])}</td><td style={td}><Badge value={l.fields[F.lists.status]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(l.fields[F.lists.estComm])}</td></tr>)}</tbody></table></div></div>}
+      {propDeals.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Deals ({propDeals.length})</div><div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Deal</th><th style={th}>Tenant</th><th style={th}>Stage</th><th style={th}>Est. Comm</th><th style={th}>Close Date</th></tr></thead><tbody>{propDeals.map(d=><tr key={d.id}><td style={td}><div style={{fontWeight:500}}>{fv(d.fields,F.deals.name)}</div></td><td style={td}>{fv(d.fields,F.deals.clientName)}</td><td style={td}><Badge value={d.fields[F.deals.stage]} /></td><td style={{...td,color:'#c69425'}}>{fmt$(d.fields[F.deals.estComm])}</td><td style={{...td,color:'#6b7280'}}>{fv(d.fields,F.deals.closeDate)}</td></tr>)}</tbody></table></div></div>}
+      {propConts.length > 0 && <div style={{ marginBottom: '16px' }}><div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Contacts</div><div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Name</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead><tbody>{propConts.map(c=><tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)}</div></td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)}</td><td style={td}>{fv(c.fields,F.conts.phone)}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)}</td></tr>)}</tbody></table></div></div>}
 
       <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Activity Log ({propActs.length})</div>
       <ActsTable acts={propActs} />
@@ -793,7 +793,7 @@ function TenantDashboard({ tenant, allData, onBack, onRefresh }) {
         <button style={{ marginLeft: 'auto', ...btnPrimary }} onClick={() => setModal('deal')}>+ New Deal</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' }}>
+      <div className="crm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' }}>
         <StatCard label="Active Pipeline" value={fmt$(pipeline$)} color="#316828" />
         <StatCard label="Closed Commission" value={fmt$(closed$)} color="#c69425" />
         <StatCard label="Active Deals" value={active.length} />
@@ -1405,14 +1405,14 @@ function GTDPage({ acts, onRefresh }) {
                 {uncontexted.length > 0 && (
                   <div style={{marginBottom:'20px'}}>
                     <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>No Context Set ({uncontexted.length})</div>
-                    <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+                    <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
                     <tbody>{uncontexted.map(a => <GtdRow key={a.id} a={a} />)}</tbody></table></div>
                   </div>
                 )}
                 {CONTEXTS.map(c => byContext[c].length > 0 && (
                   <div key={c} style={{marginBottom:'20px'}}>
                     <div style={{fontSize:'12px', fontWeight:700, color:'#7c3aed', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>{c} ({byContext[c].length})</div>
-                    <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+                    <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
                     <tbody>{byContext[c].map(a => <GtdRow key={a.id} a={a} />)}</tbody></table></div>
                   </div>
                 ))}
@@ -1425,7 +1425,7 @@ function GTDPage({ acts, onRefresh }) {
         <div>
           {waitingFor.length === 0
             ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>Nothing delegated or waiting on others.</div>
-            : <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+            : <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
               <tbody>{waitingFor.map(a => <GtdRow key={a.id} a={a} />)}</tbody></table></div>
           }
         </div>
@@ -1435,7 +1435,7 @@ function GTDPage({ acts, onRefresh }) {
         <div>
           {someday.length === 0
             ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>Nothing parked in Someday/Maybe.</div>
-            : <div style={card}><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+            : <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Item</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
               <tbody>{someday.map(a => <GtdRow key={a.id} a={a} />)}</tbody></table></div>
           }
         </div>
@@ -1446,7 +1446,7 @@ function GTDPage({ acts, onRefresh }) {
           {overdueFU.length > 0 && (
             <div style={{marginBottom:'20px'}}>
               <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🔴 Overdue ({overdueFU.length})</div>
-              <div style={card}><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
+              <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
               <tbody>{overdueFU.map(a => (
                 <tr key={a.id} style={{background:'#fff9f9'}}>
                   <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
@@ -1460,7 +1460,7 @@ function GTDPage({ acts, onRefresh }) {
           {dueTodayFU.length > 0 && (
             <div style={{marginBottom:'20px'}}>
               <div style={{fontSize:'12px', fontWeight:700, color:'#c69425', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🟡 Due Today ({dueTodayFU.length})</div>
-              <div style={card}><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
+              <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
               <tbody>{dueTodayFU.map(a => (
                 <tr key={a.id}>
                   <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
@@ -1498,6 +1498,7 @@ export default function CRM() {
   const [selected, setSelected] = useState({ listing: null, deal: null, property: null, tenant: null })
   const [collapsed, setCollapsed] = useState({})
   const toggleSection = key => setCollapsed(c => ({ ...c, [key]: !c[key] }))
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -1509,7 +1510,7 @@ export default function CRM() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const setView2 = (v) => { setView(v); setSearch(''); setSelected({ listing: null, deal: null, property: null, tenant: null }) }
+  const setView2 = (v) => { setView(v); setSearch(''); setSelected({ listing: null, deal: null, property: null, tenant: null }); setSidebarOpen(false) }
   const onRefresh = async () => {
     try {
       const res = await fetch('/api/data')
@@ -1574,8 +1575,24 @@ export default function CRM() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f0edd8' }}>
+      <style>{`
+        .crm-hamburger { display: none; }
+        .crm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 199; }
+        @media (max-width: 1024px) { .crm-tc { overflow-x: auto !important; } }
+        @media (max-width: 640px) {
+          .crm-hamburger { display: flex; align-items: center; background: none; border: none; font-size: 22px; cursor: pointer; padding: 0 4px; color: #316828; }
+          .crm-sidebar { position: fixed !important; left: -220px; top: 0; bottom: 0; z-index: 200; transition: left 0.25s; }
+          .crm-sidebar.open { left: 0 !important; }
+          .crm-overlay.open { display: block; }
+          .crm-modal-box { width: 100vw !important; max-width: 100vw !important; border-radius: 0 !important; min-height: 100vh; }
+          .crm-stat-grid { grid-template-columns: repeat(2,1fr) !important; }
+          .crm-detail-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+      {/* Sidebar overlay (phone) */}
+      <div className={`crm-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
       {/* Sidebar */}
-      <div style={{ width: '200px', background: '#fff', borderRight: '1px solid #e2dcc8', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div className={`crm-sidebar${sidebarOpen ? ' open' : ''}`} style={{ width: '200px', background: '#fff', borderRight: '1px solid #e2dcc8', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '16px', borderBottom: '1px solid #e2dcc8' }}>
           <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: '16px', color: '#316828' }}>REAT Commercial</div>
           <div style={{ fontSize: '11px', color: '#c69425', marginTop: '2px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>CRM</div>
@@ -1599,6 +1616,7 @@ export default function CRM() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Topbar */}
         <div style={{ padding: '10px 20px', borderBottom: '1px solid #e2dcc8', display: 'flex', alignItems: 'center', gap: '12px', background: '#fff' }}>
+          <button className="crm-hamburger" onClick={() => setSidebarOpen(o => !o)}>☰</button>
           <div style={{ fontSize: '15px', fontWeight: 700 }}>{detail ? '' : VIEWS.find(v=>v.id===view)?.label}</div>
           <input style={{ marginLeft: 'auto', background: '#faf8f0', border: '1px solid #e2dcc8', borderRadius: '6px', padding: '6px 12px', fontSize: '13px', width: '200px', outline: 'none' }} placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
