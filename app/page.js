@@ -1662,10 +1662,11 @@ export default function CRM() {
             return (
               <div>
                 {/* KPI Bar */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'12px', marginBottom:'20px' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:'12px', marginBottom:'20px' }}>
                   {[
-                    { label:'Active Pipeline (Your 80%)', value:fmt$(activePipeline*0.8), color:'#316828', onClick:() => setView2('deals') },
-                    { label:'YTD Closed (Gross)', value:fmt$(closedComm), color:'#c69425', onClick:() => setView2('deals') },
+                    { label:'Active Pipeline (NCI)', value:fmt$(activePipeline*0.8), color:'#316828', onClick:() => setView2('deals') },
+                    { label:'NCI Closed', value:fmt$(closedComm*0.8), color:'#c69425', onClick:() => setView2('deals') },
+                    { label:'GCI Closed', value:fmt$(closedComm), color:'#c69425', onClick:() => setView2('deals') },
                     { label:'Active Deals', value:activeDeals.length, onClick:() => setView2('deals') },
                     { label:'Active Listings', value:activeListings, onClick:() => setView2('listings') },
                     { label:'Follow-Ups Due', value:overdueFU.length, color:overdueFU.length>0?'#dc2626':undefined, onClick:() => setView2('activities') },
