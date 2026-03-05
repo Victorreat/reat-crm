@@ -1233,9 +1233,13 @@ function GTDPage({ acts, onRefresh }) {
   const [captureSaving, setCaptureSaving] = useState(false)
   const [clarifyIdx, setClarifyIdx] = useState(0)
   const [updating, setUpdating] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [projectEdit, setProjectEdit] = useState(null)
 
   const inbox = acts.filter(a => !fv(a.fields, F.acts.status) && (a.fields[F.acts.capture] || fv(a.fields, F.acts.desc)))
   const nextActions = acts.filter(a => fv(a.fields, F.acts.status) === 'Deferred')
+  const projects = acts.filter(a => fv(a.fields, F.acts.status) === 'Project')
   const waitingFor = acts.filter(a => fv(a.fields, F.acts.status) === 'Delegated')
   const someday = acts.filter(a => fv(a.fields, F.acts.status) === 'Incubate')
   const recent = [...acts].sort((a,b) => (b.fields[F.acts.date]||'').localeCompare(a.fields[F.acts.date]||'')).slice(0,25)
@@ -1276,6 +1280,16 @@ function GTDPage({ acts, onRefresh }) {
     setUpdating(null)
   }
 
+  const saveEdit = async (id) => {
+    setUpdating(id)
+    try {
+      await apiUpdate('acts', id, { 'Activity': editText, 'Capture': editText })
+      setEditingId(null)
+      await onRefresh()
+    } catch(e) { alert('Error: ' + e.message) }
+    setUpdating(null)
+  }
+
   const CONTEXTS = ['@Call','@Email','@Computer','@Car','@Errand','@Anywhere']
   const byContext = {}
   CONTEXTS.forEach(c => { byContext[c] = nextActions.filter(a => fv(a.fields, F.acts.nextAction) === c) })
@@ -1291,22 +1305,36 @@ function GTDPage({ acts, onRefresh }) {
     { id: 'log', label: 'All Activity' },
   ]
 
-  const GtdRow = ({ a }) => (
-    <tr key={a.id}>
-      <td style={td}>
-        <div style={{fontWeight:500}}>{fv(a.fields,F.acts.capture) || fv(a.fields,F.acts.desc) || '—'}</div>
-        {a.fields[F.acts.notes] && <div style={{fontSize:'11px',color:'#9ca3af',marginTop:'2px'}}>{a.fields[F.acts.notes]}</div>}
-      </td>
-      <td style={{...td,color:'#6b7280'}}>{fv(a.fields,F.acts.date)||'—'}</td>
-      <td style={{...td,color:'#6b7280',fontSize:'12px'}}>
-        {linked(a.fields,F.acts.linkedDeal)[0] ? '🤝 Deal' : linked(a.fields,F.acts.linkedProp)[0] ? '🏠 Property' : linked(a.fields,F.acts.linkedListing)[0] ? '📋 Listing' : '—'}
-      </td>
-      <td style={td}>
-        <button style={{...btnSmall, color:'#dc2626', borderColor:'#dc2626'}} disabled={!!updating}
-          onClick={() => clarifyItem(a.id, 'Done')}>✓ Done</button>
-      </td>
-    </tr>
-  )
+  const GtdRow = ({ a }) => {
+    const isEditing = editingId === a.id
+    const text = fv(a.fields, F.acts.capture) || fv(a.fields, F.acts.desc) || '—'
+    return (
+      <tr key={a.id}>
+        <td style={td}>
+          {isEditing ? (
+            <div>
+              <textarea style={{...inp, minHeight:'60px', marginBottom:'6px', fontSize:'13px'}} value={editText} onChange={e => setEditText(e.target.value)} autoFocus />
+              <div style={{display:'flex', gap:'6px'}}>
+                <button style={{...btnSmall, color:'#316828', borderColor:'#316828'}} onClick={() => saveEdit(a.id)} disabled={!!updating}>Save</button>
+                <button style={btnSmall} onClick={() => setEditingId(null)}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{fontWeight:500}}>{text}</div>
+          )}
+          {!isEditing && a.fields[F.acts.notes] && <div style={{fontSize:'11px',color:'#9ca3af',marginTop:'2px'}}>{a.fields[F.acts.notes]}</div>}
+        </td>
+        <td style={{...td,color:'#6b7280'}}>{fv(a.fields,F.acts.date)||'—'}</td>
+        <td style={{...td,color:'#6b7280',fontSize:'12px'}}>
+          {linked(a.fields,F.acts.linkedDeal)[0] ? '🤝 Deal' : linked(a.fields,F.acts.linkedProp)[0] ? '🏠 Property' : linked(a.fields,F.acts.linkedListing)[0] ? '📋 Listing' : '—'}
+        </td>
+        <td style={{...td, whiteSpace:'nowrap'}}>
+          {!isEditing && <button style={{...btnSmall, marginRight:'4px'}} disabled={!!updating} onClick={() => { setEditingId(a.id); setEditText(text === '—' ? '' : text) }}>✏️</button>}
+          <button style={{...btnSmall, color:'#dc2626', borderColor:'#dc2626'}} disabled={!!updating} onClick={() => clarifyItem(a.id, 'Done')}>✓ Done</button>
+        </td>
+      </tr>
+    )
+  }
 
   return (
     <div>
@@ -1370,10 +1398,27 @@ function GTDPage({ acts, onRefresh }) {
                     <div style={{borderTop:'1px solid #e2dcc8', paddingTop:'16px', marginBottom:'10px'}}>
                       <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px'}}>Actionable — what's the next step?</div>
                       <div style={{display:'flex', gap:'8px', marginBottom:'12px', flexWrap:'wrap'}}>
-                        <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating} onClick={() => clarifyItem(item.id, 'Project')}>📋 Project (multi-step)</button>
+                        <button style={{...btnSecondary, fontSize:'12px'}} disabled={!!updating} onClick={() => setProjectEdit({ id: item.id, text: fv(item.fields, F.acts.capture) || fv(item.fields, F.acts.desc) || '' })}>📋 Project (multi-step)</button>
                         <button style={{...btnSecondary, fontSize:'12px', color:'#7c3aed', borderColor:'#7c3aed'}} disabled={!!updating} onClick={() => clarifyItem(item.id, 'Delegated')}>👤 Delegate / Waiting For</button>
                         <button style={{...btnSecondary, fontSize:'12px', color:'#316828', borderColor:'#316828'}} disabled={!!updating} onClick={() => clarifyItem(item.id, 'Done')}>⚡ Do it now (2 min)</button>
                       </div>
+                      {projectEdit && projectEdit.id === item.id && (
+                        <div style={{marginBottom:'12px', padding:'12px', background:'#faf8f0', borderRadius:'8px', border:'1px solid #e2dcc8'}}>
+                          <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Define project steps / notes:</div>
+                          <textarea style={{...inp, minHeight:'80px', marginBottom:'8px', fontSize:'13px'}} value={projectEdit.text} onChange={e => setProjectEdit(p => ({...p, text: e.target.value}))} autoFocus />
+                          <div style={{display:'flex', gap:'8px'}}>
+                            <button style={{...btnPrimary, fontSize:'12px'}} disabled={!!updating} onClick={async () => {
+                              setUpdating(item.id)
+                              try {
+                                await apiUpdate('acts', item.id, { 'Status': 'Project', 'Capture': projectEdit.text, 'Activity': projectEdit.text })
+                                setProjectEdit(null); setClarifyIdx(0); await onRefresh()
+                              } catch(e) { alert('Error: ' + e.message) }
+                              setUpdating(null)
+                            }}>Save Project</button>
+                            <button style={{...btnSecondary, fontSize:'12px'}} onClick={() => setProjectEdit(null)}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
                       <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>Defer — pick context:</div>
                       <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
                         {CONTEXTS.map(c => (
@@ -1402,6 +1447,13 @@ function GTDPage({ acts, onRefresh }) {
           {nextActions.length === 0
             ? <div style={{color:'#9ca3af', fontSize:'13px', padding:'8px 0'}}>No next actions. Process your inbox in Clarify.</div>
             : <div>
+                {projects.length > 0 && (
+                  <div style={{marginBottom:'20px'}}>
+                    <div style={{fontSize:'12px', fontWeight:700, color:'#c69425', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>📋 Projects ({projects.length})</div>
+                    <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Project</th><th style={th}>Date</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
+                    <tbody>{projects.map(a => <GtdRow key={a.id} a={a} />)}</tbody></table></div>
+                  </div>
+                )}
                 {uncontexted.length > 0 && (
                   <div style={{marginBottom:'20px'}}>
                     <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>No Context Set ({uncontexted.length})</div>
