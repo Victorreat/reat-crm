@@ -1254,14 +1254,12 @@ function GTDPage({ acts, onRefresh }) {
   })
 
   const handleCapture = async () => {
-    if (!captureText.trim()) return
+    const lines = captureText.split('\n').map(l => l.trim()).filter(Boolean)
+    if (!lines.length) return
     setCaptureSaving(true)
     try {
-      await apiCreate('acts', {
-        'Activity': captureText.trim(),
-        'Capture': captureText.trim(),
-        'Date': now.toISOString().split('T')[0],
-      })
+      const date = now.toISOString().split('T')[0]
+      await Promise.all(lines.map(line => apiCreate('acts', { 'Activity': line, 'Capture': line, 'Date': date })))
       setCaptureText('')
       await onRefresh()
     } catch(e) { alert('Error: ' + e.message) }
@@ -1352,9 +1350,9 @@ function GTDPage({ acts, onRefresh }) {
         <div>
           <div style={{...card, padding:'16px', marginBottom:'16px'}}>
             <div style={{fontSize:'13px', fontWeight:700, marginBottom:'6px'}}>Brain Dump</div>
-            <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'10px'}}>Don't think — just dump. Capture everything, process in Clarify.</div>
+            <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'10px'}}>One item per line — each line becomes a separate inbox item. Don't think, just dump.</div>
             <textarea
-              style={{...inp, minHeight:'100px', resize:'vertical', marginBottom:'10px'}}
+              rows={30} style={{...inp, resize:'vertical', marginBottom:'10px'}}
               placeholder="e.g. Call Drew re: Strongsville signal easement... Follow up with Tom on parking... Review 7 Brew LOI redlines..."
               value={captureText}
               onChange={e => setCaptureText(e.target.value)}
