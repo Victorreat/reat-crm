@@ -7,7 +7,7 @@ const F = {
   props: {
     addr:'Address', city:'City', state:'State', zip:'Zip',
     attrs:'Property Attributes', acreage:'Acreage', sf:'Building SF', zoning:'Zoning',
-    status:'Prospecting Status', source:'Property Source', tags:'Tags',
+    status:'Prospecting Status', source:'Property Source', tags:'Prospecting Tags',
     entity:'Ownership Entity', ownerName:'Owner Name', ownerPhone:'Owner Phone', ownerEmail:'Owner Email',
     confirmed:'Contact Confirmed', attempts:'Outreach Attempts',
     firstOutreach:'First Outreach Date', lastOutreach:'Last Outreach Date',
@@ -176,7 +176,7 @@ const calcTotalRent = (base, term, incType, incAmt, incInt) => {
 }
 
 // ─── Deal Form ────────────────────────────────────────────────────────────────
-function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefillPropId }) {
+function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefillPropId, prefillClientName }) {
   const editing = !!data
   const g = f => data ? (data.fields[f] !== undefined ? data.fields[f] : '') : ''
   const gs = f => data ? (fv(data.fields, f) || '') : ''
@@ -189,7 +189,7 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
 
   const [name, setName] = useState(gs(F.deals.name))
   const [dealType, setDealType] = useState(gs(F.deals.type))
-  const [clientName, setClientName] = useState(gs(F.deals.clientName))
+  const [clientName, setClientName] = useState(gs(F.deals.clientName) || prefillClientName || '')
   const [clientEntity, setClientEntity] = useState(gs(F.deals.clientEntity))
   const [stage, setStage] = useState(gs(F.deals.stage) || 'LOI Prepared')
   const [structure, setStructure] = useState(gs(F.deals.structure))
@@ -750,7 +750,7 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
       <ActsTable acts={propActs} />
 
       {modal === 'activity' && <Modal title="Log Activity" onClose={() => setModal(null)}><ActivityForm props={allData.props} deals={allData.deals} lists={allData.lists} prefillPropId={property.id} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
-      {modal === 'edit' && <Modal title="Edit Property" onClose={() => setModal(null)}><PropertyForm data={property} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
+      {modal === 'edit' && <Modal title="Edit Property" onClose={() => setModal(null)}><PropertyForm data={property} allProps={allData.props} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
     </div>
   )
 }
@@ -843,7 +843,7 @@ function TenantDashboard({ tenant, allData, onBack, onRefresh }) {
 
 
 // ─── Property Form ────────────────────────────────────────────────────────────
-function PropertyForm({ data, onSave, onCancel }) {
+function PropertyForm({ data, allProps, onSave, onCancel }) {
   const editing = !!data
   const g = f => data?.fields?.[f] || ''
   const [addr, setAddr] = useState(g('Address'))
@@ -861,6 +861,10 @@ function PropertyForm({ data, onSave, onCancel }) {
   const [ownerEmail, setOwnerEmail] = useState(g('Owner Email'))
   const [notes, setNotes] = useState(g('Notes'))
   const [saving, setSaving] = useState(false)
+  const [tags, setTags] = useState(() => { const t = g('Prospecting Tags'); return t ? t.split(',').map(x=>x.trim()).filter(Boolean) : [] })
+  const [tagInput, setTagInput] = useState('')
+  const allTagSuggestions = [...new Set((allProps||[]).flatMap(p => { const t = fv(p.fields,F.props.tags); return t ? t.split(',').map(x=>x.trim()).filter(Boolean) : [] }))]
+  const tagSuggestions = tagInput.trim() ? allTagSuggestions.filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !tags.includes(t)) : []
 
   const handleSave = async () => {
     if (!addr) return alert('Address required')
@@ -875,6 +879,7 @@ function PropertyForm({ data, onSave, onCancel }) {
       'Ownership Entity': entity||undefined, 'Owner Name': ownerName||undefined,
       'Owner Phone': ownerPhone||undefined, 'Owner Email': ownerEmail||undefined,
       'Notes': notes||undefined,
+      'Prospecting Tags': tags.length > 0 ? tags.join(', ') : undefined,
     }
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
     try {
@@ -908,7 +913,7 @@ function PropertyForm({ data, onSave, onCancel }) {
       </div>
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Zoning</label><input style={inp} value={zoning} onChange={e=>setZoning(e.target.value)} /></div>
-        <div style={fgrp}><label style={flbl}>Status</label><select style={inp} value={status} onChange={e=>setStatus(e.target.value)}>{['New','Researching','Calling','Connected','Pitched','Active','Dead'].map(s=><option key={s}>{s}</option>)}</select></div>
+        <div style={fgrp}><label style={flbl}>Status</label><select style={inp} value={status} onChange={e=>setStatus(e.target.value)}>{['New','Researching','Calling','Connected','Pitched','Listed','Tenant Deal','Dead'].map(s=><option key={s}>{s}</option>)}</select></div>
       </div>
       <div style={{...secTitle, marginTop:'10px'}}>Ownership</div>
       <div style={fgrp}><label style={flbl}>Ownership Entity</label><input style={inp} value={entity} onChange={e=>setEntity(e.target.value)} /></div>
@@ -916,6 +921,39 @@ function PropertyForm({ data, onSave, onCancel }) {
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Owner Phone</label><input style={inp} value={ownerPhone} onChange={e=>setOwnerPhone(e.target.value)} /></div>
         <div style={fgrp}><label style={flbl}>Owner Email</label><input style={inp} value={ownerEmail} onChange={e=>setOwnerEmail(e.target.value)} /></div>
+      </div>
+      <div style={fgrp}>
+        <label style={flbl}>Prospecting Tags <span style={{fontWeight:400,color:'#9ca3af'}}>(tenant targets, lead sources)</span></label>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'4px', padding:'6px', border:'1px solid #e2dcc8', borderRadius:'6px', background:'#fff', marginBottom:'4px', minHeight:'36px' }}>
+          {tags.map(t => (
+            <span key={t} style={{ background:'#faf0d8', color:'#c69425', border:'1px solid #e8d5a0', borderRadius:'10px', fontSize:'12px', padding:'2px 8px', display:'flex', alignItems:'center', gap:'4px' }}>
+              {t}<button style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:'0', lineHeight:1 }} onClick={() => setTags(ts => ts.filter(x=>x!==t))}>×</button>
+            </span>
+          ))}
+          <input style={{ border:'none', outline:'none', fontSize:'13px', flex:1, minWidth:'120px', padding:'2px 4px' }}
+            placeholder="Type to search or add new..."
+            value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onKeyDown={e => {
+              if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                e.preventDefault()
+                const val = tagInput.trim().replace(/,$/, '')
+                if (val && !tags.includes(val)) setTags(ts => [...ts, val])
+                setTagInput('')
+              }
+            }}
+          />
+        </div>
+        {tagSuggestions.length > 0 && (
+          <div style={{ border:'1px solid #e2dcc8', borderRadius:'6px', background:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.08)', maxHeight:'120px', overflowY:'auto' }}>
+            {tagSuggestions.map(t => (
+              <div key={t} style={{ padding:'6px 10px', cursor:'pointer', fontSize:'13px' }}
+                onMouseDown={e => { e.preventDefault(); setTags(ts => [...ts, t]); setTagInput('') }}>
+                {t}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{...inp, minHeight:'70px', resize:'vertical'}} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
       <div style={{display:'flex', gap:'8px', justifyContent:'flex-end', marginTop:'12px', paddingTop:'12px', borderTop:'1px solid #e2dcc8'}}>
@@ -1006,13 +1044,14 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
   const [saving, setSaving] = useState(null)
 
   const now = new Date()
-  const STATUS_ORDER = ['New','Researching','Calling','Connected','Pitched','Active','Dead']
-  const STATUS_COLORS = { 'New':'#6b7280','Researching':'#1d4ed8','Calling':'#a16207','Connected':'#316828','Pitched':'#7c3aed','Active':'#16a34a','Dead':'#dc2626' }
+  const STATUS_ORDER = ['New','Researching','Calling','Connected','Pitched','Listed','Tenant Deal','Dead']
+  const ACTIVE_STATUSES = ['New','Researching','Calling','Connected','Pitched']
+  const STATUS_COLORS = { 'New':'#6b7280','Researching':'#1d4ed8','Calling':'#a16207','Connected':'#316828','Pitched':'#7c3aed','Listed':'#16a34a','Tenant Deal':'#c69425','Dead':'#dc2626' }
 
   const overdue = props.filter(p => {
     const lo = p.fields[F.props.lastOutreach]
     const status = fv(p.fields, F.props.status)
-    if (status === 'Dead' || status === 'Active') return false
+    if (!ACTIVE_STATUSES.includes(status)) return false
     if (!lo) return true
     return Math.floor((now - new Date(lo)) / 86400000) > 0
   })
@@ -1020,7 +1059,8 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
   const filtered = props
     .filter(p => {
       const status = fv(p.fields, F.props.status)
-      if (statusFilter !== 'All' && status !== statusFilter) return false
+      if (statusFilter === 'All' && !ACTIVE_STATUSES.includes(status)) return false
+      if (statusFilter !== 'All' && statusFilter !== 'AllIncClosed' && status !== statusFilter) return false
       if (search) {
         const q = search.toLowerCase()
         return (fv(p.fields,F.props.addr)+fv(p.fields,F.props.city)+fv(p.fields,F.props.entity)+fv(p.fields,F.props.ownerName)).toLowerCase().includes(q)
@@ -1090,7 +1130,8 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
       <div style={{ display:'flex', gap:'10px', marginBottom:'14px', alignItems:'center' }}>
         <input style={{ ...inp, maxWidth:'280px' }} placeholder="Search address, owner, entity..." value={search} onChange={e => setSearch(e.target.value)} />
         <select style={{ ...inp, maxWidth:'160px' }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="All">All Statuses</option>
+          <option value="All">Active Only</option>
+          <option value="AllIncClosed">All Statuses</option>
           {STATUS_ORDER.map(s => <option key={s}>{s}</option>)}
         </select>
         <div style={{ marginLeft:'auto', fontSize:'12px', color:'#9ca3af' }}>{filtered.length} properties</div>
@@ -1103,10 +1144,10 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
             <tr>
               <th style={th}>Property</th>
               <th style={th}>Owner / Entity</th>
+              <th style={th}>Tags</th>
               <th style={th}>Status</th>
               <th style={th}>Attempts</th>
               <th style={th}>Last Outreach</th>
-              <th style={th}>Source</th>
               <th style={th}>Actions</th>
             </tr>
           </thead>
@@ -1117,7 +1158,7 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
               const propConts = conts.filter(c => linked(c.fields, F.conts.linkedProp).some(l => l.id === p.id))
               const lo = pf[F.props.lastOutreach]
               const daysAgo = lo ? Math.floor((now - new Date(lo)) / 86400000) : null
-              const isOverdue = !['Dead','Active'].includes(fv(pf,F.props.status)) && (!lo || daysAgo > 0)
+              const isOverdue = ACTIVE_STATUSES.includes(fv(pf,F.props.status)) && (!lo || daysAgo > 0)
 
               return (
                 <React.Fragment key={p.id}>
@@ -1147,12 +1188,17 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
                         </div>
                       ) : <span style={{ color:'#dc2626', fontSize:'12px', fontWeight:600 }}>Never</span>}
                     </td>
-                    <td style={{ ...td, color:'#6b7280', fontSize:'12px' }}>{fv(pf,F.props.source)||'—'}</td>
+                    <td style={td} onClick={e => e.stopPropagation()}>
+                      {fv(pf,F.props.tags) ? fv(pf,F.props.tags).split(',').map(t => t.trim()).filter(Boolean).map(t => (
+                        <span key={t} style={{ display:'inline-block', background:'#faf0d8', color:'#c69425', border:'1px solid #e8d5a0', borderRadius:'10px', fontSize:'11px', padding:'1px 7px', marginRight:'3px', marginBottom:'2px' }}>{t}</span>
+                      )) : <span style={{ color:'#9ca3af', fontSize:'12px' }}>—</span>}
+                    </td>
                     <td style={td} onClick={e => e.stopPropagation()}>
                       <div style={{ display:'flex', gap:'4px', flexWrap:'wrap' }}>
                         <button style={btnSmall} disabled={saving===p.id} onClick={() => quickLogVM(p.id)}>{saving===p.id?'...':'📞 VM'}</button>
                         <button style={{ ...btnSmall, background:'#e8f0e9', color:'#316828', borderColor:'#316828' }} onClick={() => { setSelectedProp(p); setModal('logcall') }}>Log Call</button>
-                        <button style={{ ...btnSmall, background:'#faf8f0', color:'#c69425', borderColor:'#c69425' }} onClick={() => onSelectProperty(p)}>View →</button>
+                        {fv(pf,F.props.tags) && <button style={{ ...btnSmall, background:'#faf0d8', color:'#c69425', borderColor:'#c69425' }} onClick={() => { setSelectedProp(p); setModal('tenantdeal') }}>+ Tenant Deal</button>}
+                        <button style={{ ...btnSmall, background:'#faf8f0', color:'#316828', borderColor:'#316828' }} onClick={() => onSelectProperty(p)}>View →</button>
                       </div>
                     </td>
                   </tr>
@@ -1218,6 +1264,18 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
       {modal === 'addcontact' && selectedProp && (
         <Modal title={`Add Contact — ${fv(selectedProp.fields,F.props.addr)}`} onClose={() => setModal(null)}>
           <ContactForm props={allData.props} deals={deals} lists={lists} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} />
+        </Modal>
+      )}
+      {modal === 'tenantdeal' && selectedProp && (
+        <Modal title={`New Tenant Rep Deal — ${fv(selectedProp.fields,F.props.addr)}`} onClose={() => setModal(null)} wide>
+          <DealForm props={allData.props} lists={lists} deals={deals}
+            prefillPropId={selectedProp.id}
+            prefillClientName={fv(selectedProp.fields,F.props.tags).split(',')[0].trim()}
+            onSave={async () => {
+              await apiUpdate('props', selectedProp.id, { 'Prospecting Status': 'Tenant Deal' })
+              setModal(null); onRefresh()
+            }}
+            onCancel={() => setModal(null)} />
         </Modal>
       )}
     </div>
@@ -1602,7 +1660,8 @@ export default function CRM() {
 
   const VIEWS = [
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'properties', label: 'Properties', count: props.length },
+    { id: 'properties', label: 'Prospecting', count: props.filter(p => ['New','Researching','Calling','Connected','Pitched'].includes(fv(p.fields,F.props.status))).length },
+    { id: 'pipeline', label: 'Property Pipeline', count: props.length },
     { id: 'listings', label: 'Listings', count: lists.length },
     { id: 'deals', label: 'Deals', count: deals.length },
     { id: 'contacts', label: 'Contacts', count: conts.length },
@@ -1619,7 +1678,7 @@ export default function CRM() {
     if (view === 'deals' && selected.deal) return <DealDetail deal={selected.deal} allData={allData} onBack={() => setSelected(s => ({...s, deal:null}))} onRefresh={onRefresh} />
     if (view === 'deals' && selected.tenant) return <TenantDashboard tenant={selected.tenant} allData={allData} onBack={() => setSelected(s => ({...s, tenant:null}))} onRefresh={onRefresh} />
     if (view === 'listings' && selected.listing) return <ListingDetail listing={selected.listing} allData={allData} onBack={() => setSelected(s => ({...s, listing:null}))} onRefresh={onRefresh} />
-    if (view === 'properties' && selected.property) return <PropertyDetail property={selected.property} allData={allData} onBack={() => setSelected(s => ({...s, property:null}))} onRefresh={onRefresh} />
+    if ((view === 'properties' || view === 'pipeline') && selected.property) return <PropertyDetail property={selected.property} allData={allData} onBack={() => setSelected(s => ({...s, property:null}))} onRefresh={onRefresh} />
     return null
   })()
 
@@ -1836,45 +1895,27 @@ export default function CRM() {
 
           {/* Properties — stacked: Prospecting call sheet on top, pipeline below */}
           {!detail && view === 'properties' && (
-            <div>
-              {/* ── Prospecting Call Sheet ── */}
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: '10px' }} onClick={() => toggleSection('prospecting')}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                    📞 Prospecting Call Sheet
-                  </div>
-                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#9ca3af' }}>{collapsed['prospecting'] ? '▶' : '▼'}</span>
-                </div>
-                {!collapsed['prospecting'] && <ProspectingPage
-                  allData={allData}
-                  onRefresh={onRefresh}
-                  onSelectProperty={p => setSelected(s => ({...s, property: p}))}
-                />}
-              </div>
+            <ProspectingPage allData={allData} onRefresh={onRefresh} onSelectProperty={p => setSelected(s => ({...s, property: p}))} />
+          )}
 
-              {/* ── Property Pipeline ── */}
-              <div style={{ borderTop: '2px solid #e2dcc8', paddingTop: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: '10px' }} onClick={() => toggleSection('propPipeline')}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                    Property Pipeline
-                  </div>
-                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#9ca3af' }}>{collapsed['propPipeline'] ? '▶' : '▼'}</span>
-                </div>
-                {!collapsed['propPipeline'] && <div style={card}>
-                  <table style={tbl}>
-                    <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Attributes</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
-                    <tbody>{filt(props,[F.props.addr,F.props.city]).map(r => (
-                      <tr key={r.id} style={{ cursor:'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}>
-                        <td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td>
-                        <td style={td}>{fv(r.fields,F.props.city)||'—'}</td>
-                        <td style={{...td,color:'#6b7280'}}>{fv(r.fields,F.props.attrs)||'—'}</td>
-                        <td style={td}><Badge value={r.fields[F.props.status]} /></td>
-                        <td style={td}>{r.fields[F.props.acreage]||'—'}</td>
-                        <td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
-                </div>}
+          {!detail && view === 'pipeline' && (
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>All Properties ({props.length})</div>
+              <div style={card} className="crm-tc">
+                <table style={tbl}>
+                  <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Attributes</th><th style={th}>Prospect Tags</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
+                  <tbody>{filt(props,[F.props.addr,F.props.city,F.props.tags]).map(r => (
+                    <tr key={r.id} style={{ cursor:'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}>
+                      <td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td>
+                      <td style={td}>{fv(r.fields,F.props.city)||'—'}</td>
+                      <td style={{...td,color:'#6b7280'}}>{Array.isArray(r.fields[F.props.attrs]) ? r.fields[F.props.attrs].join(', ') : fv(r.fields,F.props.attrs)||'—'}</td>
+                      <td style={td}>{fv(r.fields,F.props.tags) ? fv(r.fields,F.props.tags).split(',').map(t=>t.trim()).filter(Boolean).map(t=><span key={t} style={{background:'#faf0d8',color:'#c69425',border:'1px solid #e8d5a0',borderRadius:'10px',fontSize:'11px',padding:'1px 7px',marginRight:'3px'}}>{t}</span>) : '—'}</td>
+                      <td style={td}><Badge value={r.fields[F.props.status]} /></td>
+                      <td style={td}>{r.fields[F.props.acreage]||'—'}</td>
+                      <td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
               </div>
             </div>
           )}
@@ -1984,7 +2025,7 @@ export default function CRM() {
       )}
       {modal === 'deal' && <Modal title="New Deal" onClose={() => setModal(null)} wide><DealForm props={props} lists={lists} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
       {modal === 'listing' && <Modal title="New Listing" onClose={() => setModal(null)} wide><ListingForm props={props} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
-      {modal === 'property' && <Modal title="New Property" onClose={() => setModal(null)}><PropertyForm onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
+      {modal === 'property' && <Modal title="New Property" onClose={() => setModal(null)}><PropertyForm allProps={props} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
       {modal === 'contact' && <Modal title="New Contact" onClose={() => setModal(null)}><ContactForm props={props} deals={deals} lists={lists} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
       {modal === 'activity' && <Modal title="Log Activity" onClose={() => setModal(null)}><ActivityForm props={props} deals={deals} lists={lists} conts={conts} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
     </div>
