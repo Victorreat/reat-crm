@@ -87,18 +87,18 @@ function Badge({ value }) {
 }
 
 // ─── API calls ────────────────────────────────────────────────────────────────
-async function apiCreate(table, fields) {
-  const res = await fetch('/api/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table, fields }) })
+async function apiCall(method, body) {
+  const res = await fetch('/api/records', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  if (!res.ok) {
+    const ct = res.headers.get('content-type') || ''
+    if (ct.includes('text/html')) throw new Error(`HTTP ${res.status} — server error, check Vercel deployment`)
+  }
   const json = await res.json()
   if (json.error) throw new Error(json.error)
   return json
 }
-async function apiUpdate(table, id, fields) {
-  const res = await fetch('/api/records', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table, id, fields }) })
-  const json = await res.json()
-  if (json.error) throw new Error(json.error)
-  return json
-}
+async function apiCreate(table, fields) { return apiCall('POST', { table, fields }) }
+async function apiUpdate(table, id, fields) { return apiCall('PATCH', { table, id, fields }) }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function DetailRow({ label, value }) {
