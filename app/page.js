@@ -836,11 +836,17 @@ function TenantDashboard({ tenant, allData, onBack, onRefresh }) {
   }
   const byMonth = {}
   tenantDeals.forEach(d => {
-    const cd = fv(d.fields, F.deals.closeDate)
-    if (!cd) return
-    const key = cd.substring(0,7)
-    if (!byMonth[key]) byMonth[key] = []
-    byMonth[key].push(d)
+    const name = fv(d.fields, F.deals.name)
+    ;[
+      { dateKey: F.deals.pay1Date, amtKey: F.deals.pay1Amt, recdKey: F.deals.pay1Recd, lbl: 'Pmt 1' },
+      { dateKey: F.deals.pay2Date, amtKey: F.deals.pay2Amt, recdKey: F.deals.pay2Recd, lbl: 'Pmt 2' },
+    ].forEach(({ dateKey, amtKey, recdKey, lbl }) => {
+      const dt = fv(d.fields, dateKey)
+      if (!dt) return
+      const key = dt.substring(0, 7)
+      if (!byMonth[key]) byMonth[key] = []
+      byMonth[key].push({ name, amount: d.fields[amtKey] || 0, received: !!d.fields[recdKey], lbl })
+    })
   })
 
   const STAGE_ORDER = ['LOI Prepared','LOI Negotiation','LOI Submitted','LOI Accepted','Lease Negotiation','Lease Draft','PSA Negotiation','PSA Draft','Executed','Dead']
@@ -882,13 +888,24 @@ function TenantDashboard({ tenant, allData, onBack, onRefresh }) {
       <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>12-Month Commission Calendar</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: '8px', marginBottom: '16px' }}>
         {months.map(m => {
-          const mDeals = byMonth[m.key] || []
-          const total = mDeals.reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
+          const entries = byMonth[m.key] || []
+          const pending = entries.filter(e => !e.received).reduce((s,e) => s + e.amount, 0)
+          const received = entries.filter(e => e.received).reduce((s,e) => s + e.amount, 0)
           return (
             <div key={m.key} style={{ background: '#fff', border: '1px solid #e2dcc8', borderRadius: '8px', padding: '8px', minHeight: '60px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '4px' }}>{m.label}</div>
-              {mDeals.map(d => <div key={d.id} style={{ fontSize: '10px', color: '#316828', background: '#e8f0e9', borderRadius: '3px', padding: '2px 4px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fv(d.fields, F.deals.name)}</div>)}
-              {total > 0 && <div style={{ fontSize: '11px', fontWeight: 700, color: '#c69425', marginTop: '4px' }}>{fmt$(total)}</div>}
+              {entries.map((e, i) => (
+                <div key={i} style={{ fontSize: '10px', color: e.received ? '#c69425' : '#316828', background: e.received ? '#fef9c3' : '#e8f0e9', borderRadius: '3px', padding: '2px 4px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={`${e.name} — ${e.lbl}: ${fmt$(e.amount)}`}>
+                  {e.name} {fmt$(e.amount)}
+                </div>
+              ))}
+              {(pending > 0 || received > 0) && (
+                <div style={{ fontSize: '11px', fontWeight: 700, marginTop: '4px' }}>
+                  {pending > 0 && <div style={{ color: '#316828' }}>↑ {fmt$(pending)}</div>}
+                  {received > 0 && <div style={{ color: '#c69425' }}>✓ {fmt$(received)}</div>}
+                </div>
+              )}
             </div>
           )
         })}
@@ -2051,27 +2068,52 @@ export default function CRM() {
               const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
               months.push({ label: d.toLocaleString('default', {month:'short', year:'numeric'}), key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` })
             }
+            // Build payment entries by expected payment date
             const byMonth = {}
             deals.forEach(d => {
-              const cd = fv(d.fields, F.deals.closeDate)
-              if (!cd) return
-              const key = cd.substring(0,7)
-              if (!byMonth[key]) byMonth[key] = []
-              byMonth[key].push(d)
+              const name = fv(d.fields, F.deals.name)
+              ;[
+                { dateKey: F.deals.pay1Date, amtKey: F.deals.pay1Amt, recdKey: F.deals.pay1Recd, lbl: 'Pmt 1' },
+                { dateKey: F.deals.pay2Date, amtKey: F.deals.pay2Amt, recdKey: F.deals.pay2Recd, lbl: 'Pmt 2' },
+              ].forEach(({ dateKey, amtKey, recdKey, lbl }) => {
+                const dt = fv(d.fields, dateKey)
+                if (!dt) return
+                const key = dt.substring(0, 7)
+                if (!byMonth[key]) byMonth[key] = []
+                byMonth[key].push({ name, amount: d.fields[amtKey] || 0, received: !!d.fields[recdKey], lbl, deal: d })
+              })
             })
             return (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: '10px' }}>
-                {months.map(m => {
-                  const mDeals = byMonth[m.key] || []
-                  const total = mDeals.reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
-                  return (
-                    <div key={m.key} style={{ background: '#fff', border: '1px solid #e2dcc8', borderRadius: '10px', padding: '10px', minHeight: '80px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>{m.label}</div>
-                      {mDeals.map(d => <div key={d.id} style={{ fontSize: '10px', color: '#316828', background: '#e8f0e9', borderRadius: '3px', padding: '2px 5px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fv(d.fields, F.deals.name)}</div>)}
-                      {total > 0 && <div style={{ fontSize: '12px', fontWeight: 700, color: '#c69425', marginTop: '6px' }}>{fmt$(total)}</div>}
-                    </div>
-                  )
-                })}
+              <div>
+                <div style={{ marginBottom: '16px', display: 'flex', gap: '16px', fontSize: '12px', color: '#6b7280' }}>
+                  <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:10, height:10, borderRadius:'2px', background:'#e8f0e9', border:'1px solid #316828', display:'inline-block' }} /> Pending</span>
+                  <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:10, height:10, borderRadius:'2px', background:'#fef9c3', border:'1px solid #c69425', display:'inline-block' }} /> Received</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: '10px' }}>
+                  {months.map(m => {
+                    const entries = byMonth[m.key] || []
+                    const pending = entries.filter(e => !e.received).reduce((s,e) => s + e.amount, 0)
+                    const received = entries.filter(e => e.received).reduce((s,e) => s + e.amount, 0)
+                    return (
+                      <div key={m.key} style={{ background: '#fff', border: '1px solid #e2dcc8', borderRadius: '10px', padding: '10px', minHeight: '80px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>{m.label}</div>
+                        {entries.map((e, i) => (
+                          <div key={i} onClick={() => { setView('deals'); setSelected(s => ({...s, deal: e.deal})) }}
+                            style={{ fontSize: '10px', color: e.received ? '#c69425' : '#316828', background: e.received ? '#fef9c3' : '#e8f0e9', borderRadius: '3px', padding: '2px 5px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                            title={`${e.name} — ${e.lbl}: ${fmt$(e.amount)}`}>
+                            {e.name} {fmt$(e.amount)}
+                          </div>
+                        ))}
+                        {(pending > 0 || received > 0) && (
+                          <div style={{ marginTop: '6px', fontSize: '11px', fontWeight: 700 }}>
+                            {pending > 0 && <div style={{ color: '#316828' }}>↑ {fmt$(pending)}</div>}
+                            {received > 0 && <div style={{ color: '#c69425' }}>✓ {fmt$(received)}</div>}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )
           })()}
