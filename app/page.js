@@ -33,6 +33,9 @@ const F = {
     buyerTenant:'Buyer/Tenant', counterpart:'Counterpart Contact',
     driveFolder:'Drive Folder', prop:'Property', contacts:'Contacts',
     acts:'Activities', closeDate:'Projected Close Date', linkedListing:'Linked Listing',
+    commStatus:'Commission Status',
+    pay1Date:'Expected Payment 1 Date', pay1Amt:'Payment 1 Amount', pay1Recd:'Payment 1 Received',
+    pay2Date:'Expected Payment 2 Date', pay2Amt:'Payment 2 Amount', pay2Recd:'Payment 2 Received',
   },
   conts: {
     firstName:'First Name', lastName:'Last Name', company:'Company', title:'Title',
@@ -211,6 +214,12 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
   const [incType, setIncType] = useState('')
   const [incAmt, setIncAmt] = useState('')
   const [incInt, setIncInt] = useState('')
+  const [pay1Date, setPay1Date] = useState(g(F.deals.pay1Date))
+  const [pay1Amt, setPay1Amt] = useState(g(F.deals.pay1Amt) || '')
+  const [pay1Recd, setPay1Recd] = useState(!!g(F.deals.pay1Recd))
+  const [pay2Date, setPay2Date] = useState(g(F.deals.pay2Date))
+  const [pay2Amt, setPay2Amt] = useState(g(F.deals.pay2Amt) || '')
+  const [pay2Recd, setPay2Recd] = useState(!!g(F.deals.pay2Recd))
   const [saving, setSaving] = useState(false)
 
   const annualBase = parseFloat(psf) * parseFloat(sf) || 0
@@ -245,6 +254,13 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
       'Notes': notes || undefined,
       'Property': (typeof propId === 'string' && propId) ? [propId] : undefined,
       'Linked Listing': (typeof listId === 'string' && listId) ? [listId] : undefined,
+      'Expected Payment 1 Date': pay1Date || undefined,
+      'Payment 1 Amount': parseFloat(pay1Amt) || undefined,
+      'Payment 1 Received': pay1Recd,
+      'Expected Payment 2 Date': pay2Date || undefined,
+      'Payment 2 Amount': parseFloat(pay2Amt) || undefined,
+      'Payment 2 Received': pay2Recd,
+      'Commission Status': pay1Recd && pay2Recd ? 'Received' : pay1Recd ? 'Partial' : 'Pending',
     }
     const clean = Object.fromEntries(Object.entries(fields).filter(([,v]) => v !== undefined))
     console.log('[DealForm] saving clean payload:', JSON.stringify(clean, null, 2))
@@ -325,6 +341,23 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>CA Executed</label><div style={{ paddingTop: '6px' }}><input type="checkbox" checked={ca} onChange={e=>setCa(e.target.checked)} style={{ marginRight: '6px' }} /><span style={{ fontSize: '13px' }}>CA Signed</span></div></div>
         <div style={fgrp}><label style={flbl}>Agency Disclosure</label><div style={{ paddingTop: '6px' }}><input type="checkbox" checked={agencyDisclosure} onChange={e=>setAgencyDisclosure(e.target.checked)} style={{ marginRight: '6px' }} /><span style={{ fontSize: '13px' }}>Disclosure Executed</span></div></div>
+      </div>
+      <div style={{ background:'#faf8f0', border:'1px solid #e2dcc8', borderRadius:'8px', padding:'12px', marginBottom:'10px' }}>
+        <div style={secTitle}>Commission Payments</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px', marginBottom:'8px', alignItems:'end' }}>
+          <div style={fgrp}><label style={flbl}>Expected Payment 1 Date</label><input style={inp} type="date" value={pay1Date} onChange={e=>setPay1Date(e.target.value)} /></div>
+          <div style={fgrp}><label style={flbl}>Payment 1 Amount $</label><input style={inp} type="number" step="0.01" value={pay1Amt} onChange={e=>setPay1Amt(e.target.value)} /></div>
+          <div style={fgrp}><label style={flbl}>Received</label><div style={{paddingTop:'6px'}}><input type="checkbox" checked={pay1Recd} onChange={e=>setPay1Recd(e.target.checked)} style={{marginRight:'6px'}} /><span style={{fontSize:'13px'}}>Payment 1 Received</span></div></div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px', alignItems:'end' }}>
+          <div style={fgrp}><label style={flbl}>Expected Payment 2 Date</label><input style={inp} type="date" value={pay2Date} onChange={e=>setPay2Date(e.target.value)} /></div>
+          <div style={fgrp}><label style={flbl}>Payment 2 Amount $</label><input style={inp} type="number" step="0.01" value={pay2Amt} onChange={e=>setPay2Amt(e.target.value)} /></div>
+          <div style={fgrp}><label style={flbl}>Received</label><div style={{paddingTop:'6px'}}><input type="checkbox" checked={pay2Recd} onChange={e=>setPay2Recd(e.target.checked)} style={{marginRight:'6px'}} /><span style={{fontSize:'13px'}}>Payment 2 Received</span></div></div>
+        </div>
+        {(pay1Recd || pay2Recd) && <div style={{marginTop:'8px', fontSize:'12px', color:'#316828', fontWeight:600}}>
+          Commission Received: {fmt$((pay1Recd ? parseFloat(pay1Amt)||0 : 0) + (pay2Recd ? parseFloat(pay2Amt)||0 : 0))}
+          {' · '}NCI: {fmt$(((pay1Recd ? parseFloat(pay1Amt)||0 : 0) + (pay2Recd ? parseFloat(pay2Amt)||0 : 0)) * 0.8)}
+        </div>}
       </div>
       <div style={fgrp}><label style={flbl}>Notes</label><textarea style={{ ...inp, minHeight: '70px', resize: 'vertical' }} value={notes} onChange={e=>setNotes(e.target.value)} /></div>
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2dcc8' }}>
@@ -585,6 +618,34 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
             <DetailRow label="Asking Price" value={fmt$(linkedList.fields[F.lists.price])} />
           </>}
         </div>
+      </div>
+
+      {/* Commission Payments */}
+      <div style={{ ...card, padding: '16px', marginBottom: '16px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
+          <div style={secTitle}>Commission Payments</div>
+          <Badge value={f[F.deals.commStatus] || 'Pending'} />
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+          <div style={{ background:'#faf8f0', borderRadius:'8px', padding:'12px', border:'1px solid #e2dcc8' }}>
+            <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', marginBottom:'8px' }}>PAYMENT 1</div>
+            <DetailRow label="Expected Date" value={fv(f, F.deals.pay1Date) || '—'} />
+            <DetailRow label="Amount" value={f[F.deals.pay1Amt] ? fmt$(f[F.deals.pay1Amt]) : '—'} />
+            <DetailRow label="Status" value={f[F.deals.pay1Recd] ? '✓ Received' : 'Pending'} />
+          </div>
+          <div style={{ background:'#faf8f0', borderRadius:'8px', padding:'12px', border:'1px solid #e2dcc8' }}>
+            <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', marginBottom:'8px' }}>PAYMENT 2</div>
+            <DetailRow label="Expected Date" value={fv(f, F.deals.pay2Date) || '—'} />
+            <DetailRow label="Amount" value={f[F.deals.pay2Amt] ? fmt$(f[F.deals.pay2Amt]) : '—'} />
+            <DetailRow label="Status" value={f[F.deals.pay2Recd] ? '✓ Received' : 'Pending'} />
+          </div>
+        </div>
+        {(f[F.deals.pay1Recd] || f[F.deals.pay2Recd]) && (
+          <div style={{ marginTop:'10px', padding:'10px', background:'#e8f0e9', borderRadius:'6px', display:'flex', gap:'24px' }}>
+            <div><div style={{ fontSize:'11px', color:'#6b7280' }}>GCI Received</div><div style={{ fontWeight:700, color:'#316828' }}>{fmt$((f[F.deals.pay1Recd]?f[F.deals.pay1Amt]||0:0)+(f[F.deals.pay2Recd]?f[F.deals.pay2Amt]||0:0))}</div></div>
+            <div><div style={{ fontSize:'11px', color:'#6b7280' }}>NCI (Your 80%)</div><div style={{ fontWeight:700, color:'#316828' }}>{fmt$(((f[F.deals.pay1Recd]?f[F.deals.pay1Amt]||0:0)+(f[F.deals.pay2Recd]?f[F.deals.pay2Amt]||0:0))*0.8)}</div></div>
+          </div>
+        )}
       </div>
 
       {dealConts.length > 0 && (
@@ -1651,11 +1712,12 @@ export default function CRM() {
   const filt = (recs, fields) => q ? recs.filter(r => fields.some(f => (fv(r.fields, f)||'').toLowerCase().includes(q))) : recs
 
   // Stats
-  const activePipeline = deals.filter(d => !['Executed','Dead'].includes(fv(d.fields, F.deals.stage))).reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
-  const closedComm = deals.filter(d => fv(d.fields, F.deals.stage) === 'Executed').reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
+  const commReceived = d => (d.fields[F.deals.pay1Recd] ? (d.fields[F.deals.pay1Amt]||0) : 0) + (d.fields[F.deals.pay2Recd] ? (d.fields[F.deals.pay2Amt]||0) : 0)
+  const activePipeline = deals.filter(d => fv(d.fields,F.deals.commStatus) !== 'Received' && fv(d.fields,F.deals.stage) !== 'Dead').reduce((s,d) => s + (d.fields[F.deals.estComm]||0), 0)
+  const ytdClosedGross = deals.reduce((s,d) => s + commReceived(d), 0)
+  const dealsUnderContract = deals.filter(d => fv(d.fields,F.deals.stage) === 'Executed' && fv(d.fields,F.deals.commStatus) !== 'Received').length
+  const activeDealsCount = deals.filter(d => !['Executed','Dead'].includes(fv(d.fields,F.deals.stage))).length
   const activeListings = lists.filter(l => fv(l.fields, F.lists.status) === 'Active').length
-  const fueDue = acts.filter(a => { const fd = a.fields[F.acts.fuDate]; return fd && !a.fields[F.acts.fuDone] && new Date(fd) <= new Date() }).length
-
   const overdueCount = acts.filter(a => { const fd = a.fields[F.acts.fuDate]; return fd && !a.fields[F.acts.fuDone] && new Date(fd) <= new Date() }).length
 
   const VIEWS = [
@@ -1772,11 +1834,17 @@ export default function CRM() {
               <div>
                 {/* KPI Bar */}
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:'12px', marginBottom:'20px' }}>
+                  {/* YTD Closed — dual NCI/GCI */}
+                  <div onClick={() => setView2('deals')} style={{ background:'#fff', border:'1px solid #e2dcc8', borderRadius:'10px', padding:'14px 16px', cursor:'pointer' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='#faf8f0'} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+                    <div style={{ fontSize:'11px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'6px' }}>YTD Closed</div>
+                    <div style={{ fontSize:'13px', fontWeight:700, color:'#316828' }}>NCI {fmt$(ytdClosedGross*0.8)}</div>
+                    <div style={{ fontSize:'13px', fontWeight:700, color:'#c69425' }}>GCI {fmt$(ytdClosedGross)}</div>
+                  </div>
                   {[
                     { label:'Active Pipeline (NCI)', value:fmt$(activePipeline*0.8), color:'#316828', onClick:() => setView2('deals') },
-                    { label:'YTD Closed (NCI)', value:fmt$(closedComm*0.8), color:'#c69425', onClick:() => setView2('deals') },
-                    { label:'REAT Closed (GCI)', value:fmt$(closedComm), color:'#c69425', onClick:() => setView2('deals') },
-                    { label:'Active Deals', value:activeDeals.length, onClick:() => setView2('deals') },
+                    { label:'Deals Under Contract', value:dealsUnderContract, color: dealsUnderContract>0?'#c69425':undefined, onClick:() => setView2('deals') },
+                    { label:'Active Deals', value:activeDealsCount, onClick:() => setView2('deals') },
                     { label:'Active Listings', value:activeListings, onClick:() => setView2('listings') },
                     { label:'Follow-Ups Due', value:overdueFU.length, color:overdueFU.length>0?'#dc2626':undefined, onClick:() => setView2('activities') },
                   ].map(c => (
