@@ -787,11 +787,21 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
           <div style={secTitle}>Property Details</div>
           <DetailRow label="Address" value={fv(f, F.props.addr)} />
-          <DetailRow label="City" value={fv(f, F.props.city)} />
+          <DetailRow label="City" value={[fv(f, F.props.city), f['State']].filter(Boolean).join(', ')} />
           <DetailRow label="Zip" value={fv(f, F.props.zip)} />
-          <DetailRow label="Type" value={fv(f, F.props.attrs)} />
           <DetailRow label="Zoning" value={fv(f, F.props.zoning)} />
-          <DetailRow label="Tags" value={fv(f, F.props.tags)} />
+          {Array.isArray(f[F.props.attrs]) && f[F.props.attrs].length > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid #f5f2e8' }}>
+              <span style={{ fontSize:'12px', color:'#6b7280', fontWeight:500 }}>Attributes</span>
+              <div style={{ textAlign:'right' }}>{f[F.props.attrs].map(a => <span key={a} style={{ display:'inline-block', background:'#f0edd8', color:'#6b7280', border:'1px solid #e2dcc8', borderRadius:'10px', fontSize:'11px', padding:'1px 7px', marginLeft:'3px', marginBottom:'2px' }}>{a}</span>)}</div>
+            </div>
+          )}
+          {fv(f, F.props.tags) && (
+            <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid #f5f2e8' }}>
+              <span style={{ fontSize:'12px', color:'#6b7280', fontWeight:500 }}>Prospecting Tags</span>
+              <div style={{ textAlign:'right' }}>{fv(f, F.props.tags).split(',').map(t=>t.trim()).filter(Boolean).map(t => <span key={t} style={{ display:'inline-block', background:'#faf0d8', color:'#c69425', border:'1px solid #e8d5a0', borderRadius:'10px', fontSize:'11px', padding:'1px 7px', marginLeft:'3px', marginBottom:'2px' }}>{t}</span>)}</div>
+            </div>
+          )}
           {f[F.props.notes] && <div style={{ marginTop: '10px' }}><div style={flbl}>Notes</div><div style={{ fontSize: '13px', whiteSpace: 'pre-wrap' }}>{f[F.props.notes]}</div></div>}
         </div>
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
@@ -1222,7 +1232,7 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
             <tr>
               <th style={th}>Property</th>
               <th style={th}>Owner / Entity</th>
-              <th style={th}>Tags</th>
+              <th style={th}>Prospecting Tags</th>
               <th style={th}>Status</th>
               <th style={th}>Attempts</th>
               <th style={th}>Last Outreach</th>
