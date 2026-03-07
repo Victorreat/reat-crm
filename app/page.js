@@ -768,7 +768,7 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
         <button style={btnBack} onClick={onBack}>← Back</button>
-        <div style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'DM Serif Display, serif' }}>{fv(f, F.props.addr)}{fv(f, F.props.city) ? ', ' + fv(f, F.props.city) : ''}</div>
+        <div style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'DM Serif Display, serif' }}>{fv(f, F.props.addr)}</div>
         <Badge value={f[F.props.status]} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
           <button style={btnSecondary} onClick={() => setModal('edit')}>Edit Property</button>
@@ -787,7 +787,7 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
           <div style={secTitle}>Property Details</div>
           <DetailRow label="Address" value={fv(f, F.props.addr)} />
-          <DetailRow label="City" value={[fv(f, F.props.city), f['State']].filter(Boolean).join(', ')} />
+          <DetailRow label="City" value={fv(f, F.props.city)} />
           <DetailRow label="Zip" value={fv(f, F.props.zip)} />
           <DetailRow label="Zoning" value={fv(f, F.props.zoning)} />
           {Array.isArray(f[F.props.attrs]) && f[F.props.attrs].length > 0 && (
@@ -987,7 +987,7 @@ function PropertyForm({ data, allProps, onSave, onCancel }) {
       <div style={fgrp}>
         <label style={flbl}>Property Attributes</label>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'4px 10px', padding:'8px 10px', border:'1px solid #e2dcc8', borderRadius:'6px', background:'#fff' }}>
-          {['Hard Corner','Freestanding','Multi-Tenant/Strip Center','Land','Out Parcel','End Cap','Drive-Thru','Industrial','Bank','Medical','Office','Mixed Use','Multifamily','Mall','Power Center'].map(opt => (
+          {['Bank','Drive-Thru','End Cap','Freestanding','Hard Corner','Industrial','Land','Mall','Medical','Mixed Use','Multi-Tenant/Strip Center','Multifamily','Office','Out Parcel','Power Center'].map(opt => (
             <label key={opt} style={{ display:'flex', alignItems:'center', gap:'6px', fontSize:'13px', cursor:'pointer', padding:'2px 0' }}>
               <input type="checkbox" checked={attrs.includes(opt)} onChange={e => setAttrs(a => e.target.checked ? [...a, opt] : a.filter(x => x !== opt))} />
               {opt}
