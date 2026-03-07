@@ -1121,6 +1121,70 @@ function ContactForm({ data, props, deals, lists, onSave, onCancel }) {
 }
 
 
+// ─── Pipeline Page ────────────────────────────────────────────────────────────
+function PipelinePage({ props, onSelectProperty }) {
+  const STATUS_ORDER = ['New','Researching','Calling','Connected','Pitched','Listed','Tenant Deal','Dead']
+  const [sort, setSort] = useState({ col: 'addr', dir: 'asc' })
+  const [statusFilter, setStatusFilter] = useState('All')
+
+  const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }))
+  const SortTh = ({ col, label }) => (
+    <th style={{ ...th, cursor:'pointer', userSelect:'none', whiteSpace:'nowrap' }} onClick={() => toggleSort(col)}>
+      {label} <span style={{ color: sort.col === col ? '#316828' : '#d1d5db', fontSize:'10px' }}>{sort.col === col ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+    </th>
+  )
+
+  const filtered = props
+    .filter(p => statusFilter === 'All' || fv(p.fields, F.props.status) === statusFilter)
+    .sort((a, b) => {
+      const dir = sort.dir === 'asc' ? 1 : -1
+      switch (sort.col) {
+        case 'addr':   return dir * (fv(a.fields,F.props.addr)||'').localeCompare(fv(b.fields,F.props.addr)||'')
+        case 'city':   return dir * (fv(a.fields,F.props.city)||'').localeCompare(fv(b.fields,F.props.city)||'')
+        case 'status': return dir * (STATUS_ORDER.indexOf(fv(a.fields,F.props.status)) - STATUS_ORDER.indexOf(fv(b.fields,F.props.status)))
+        case 'acreage':return dir * ((a.fields[F.props.acreage]||0) - (b.fields[F.props.acreage]||0))
+        case 'sf':     return dir * ((a.fields[F.props.sf]||0) - (b.fields[F.props.sf]||0))
+        default:       return 0
+      }
+    })
+
+  return (
+    <div>
+      <div style={{ display:'flex', gap:'10px', marginBottom:'12px', alignItems:'center' }}>
+        <div style={{ fontSize:'12px', fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em' }}>All Properties ({filtered.length})</div>
+        <select style={{ ...inp, maxWidth:'160px' }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="All">All Statuses</option>
+          {STATUS_ORDER.map(s => <option key={s}>{s}</option>)}
+        </select>
+      </div>
+      <div style={card} className="crm-tc">
+        <table style={tbl}>
+          <thead><tr>
+            <SortTh col="addr" label="Address" />
+            <SortTh col="city" label="City" />
+            <th style={th}>Attributes</th>
+            <th style={th}>Prospecting Tags</th>
+            <SortTh col="status" label="Status" />
+            <SortTh col="acreage" label="Acreage" />
+            <SortTh col="sf" label="SF" />
+          </tr></thead>
+          <tbody>{filtered.map(r => (
+            <tr key={r.id} style={{ cursor:'pointer' }} onClick={() => onSelectProperty(r)}>
+              <td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td>
+              <td style={td}>{fv(r.fields,F.props.city)||'—'}</td>
+              <td style={{...td,color:'#6b7280'}}>{Array.isArray(r.fields[F.props.attrs]) ? r.fields[F.props.attrs].join(', ') : fv(r.fields,F.props.attrs)||'—'}</td>
+              <td style={td}>{fv(r.fields,F.props.tags) ? fv(r.fields,F.props.tags).split(',').map(t=>t.trim()).filter(Boolean).map(t=><span key={t} style={{background:'#faf0d8',color:'#c69425',border:'1px solid #e8d5a0',borderRadius:'10px',fontSize:'11px',padding:'1px 7px',marginRight:'3px'}}>{t}</span>) : '—'}</td>
+              <td style={td}><Badge value={r.fields[F.props.status]} /></td>
+              <td style={td}>{r.fields[F.props.acreage]||'—'}</td>
+              <td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ─── Prospecting Page ─────────────────────────────────────────────────────────
 function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
   const { props, acts, conts, deals, lists } = allData
@@ -1129,7 +1193,15 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
   const [expandedId, setExpandedId] = useState(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [sort, setSort] = useState({ col: 'lastOutreach', dir: 'asc' })
   const [saving, setSaving] = useState(null)
+
+  const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }))
+  const SortTh = ({ col, label, style: extraStyle }) => (
+    <th style={{ ...th, ...extraStyle, cursor:'pointer', userSelect:'none', whiteSpace:'nowrap' }} onClick={() => toggleSort(col)}>
+      {label} <span style={{ color: sort.col === col ? '#316828' : '#d1d5db', fontSize:'10px' }}>{sort.col === col ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+    </th>
+  )
 
   const now = new Date()
   const STATUS_ORDER = ['New','Researching','Calling','Connected','Pitched','Listed','Tenant Deal','Dead']
@@ -1156,10 +1228,19 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
       return true
     })
     .sort((a,b) => {
-      const aLo = a.fields[F.props.lastOutreach] || ''
-      const bLo = b.fields[F.props.lastOutreach] || ''
-      if (aLo !== bLo) return aLo.localeCompare(bLo)
-      return STATUS_ORDER.indexOf(fv(a.fields,F.props.status)) - STATUS_ORDER.indexOf(fv(b.fields,F.props.status))
+      const dir = sort.dir === 'asc' ? 1 : -1
+      switch (sort.col) {
+        case 'addr':        return dir * (fv(a.fields,F.props.addr)||'').localeCompare(fv(b.fields,F.props.addr)||'')
+        case 'owner':       return dir * (fv(a.fields,F.props.ownerName)||'').localeCompare(fv(b.fields,F.props.ownerName)||'')
+        case 'status':      return dir * (STATUS_ORDER.indexOf(fv(a.fields,F.props.status)) - STATUS_ORDER.indexOf(fv(b.fields,F.props.status)))
+        case 'attempts':    return dir * ((a.fields[F.props.attempts]||0) - (b.fields[F.props.attempts]||0))
+        case 'lastOutreach':{
+          const aLo = a.fields[F.props.lastOutreach] || ''
+          const bLo = b.fields[F.props.lastOutreach] || ''
+          return dir * aLo.localeCompare(bLo)
+        }
+        default: return 0
+      }
     })
 
   const quickLogVM = async (propId) => {
@@ -1230,12 +1311,12 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
         <table style={tbl}>
           <thead>
             <tr>
-              <th style={th}>Property</th>
-              <th style={th}>Owner / Entity</th>
+              <SortTh col="addr" label="Property" />
+              <SortTh col="owner" label="Owner / Entity" />
               <th style={th}>Prospecting Tags</th>
-              <th style={th}>Status</th>
-              <th style={th}>Attempts</th>
-              <th style={th}>Last Outreach</th>
+              <SortTh col="status" label="Status" />
+              <SortTh col="attempts" label="Attempts" />
+              <SortTh col="lastOutreach" label="Last Outreach" />
               <th style={th}>Actions</th>
             </tr>
           </thead>
@@ -1996,25 +2077,7 @@ export default function CRM() {
           )}
 
           {!detail && view === 'pipeline' && (
-            <div>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>All Properties ({props.length})</div>
-              <div style={card} className="crm-tc">
-                <table style={tbl}>
-                  <thead><tr><th style={th}>Address</th><th style={th}>City</th><th style={th}>Attributes</th><th style={th}>Prospect Tags</th><th style={th}>Status</th><th style={th}>Acreage</th><th style={th}>SF</th></tr></thead>
-                  <tbody>{filt(props,[F.props.addr,F.props.city,F.props.tags]).map(r => (
-                    <tr key={r.id} style={{ cursor:'pointer' }} onClick={() => setSelected(s => ({...s, property:r}))}>
-                      <td style={td}><div style={{fontWeight:500}}>{fv(r.fields,F.props.addr)||'—'}</div></td>
-                      <td style={td}>{fv(r.fields,F.props.city)||'—'}</td>
-                      <td style={{...td,color:'#6b7280'}}>{Array.isArray(r.fields[F.props.attrs]) ? r.fields[F.props.attrs].join(', ') : fv(r.fields,F.props.attrs)||'—'}</td>
-                      <td style={td}>{fv(r.fields,F.props.tags) ? fv(r.fields,F.props.tags).split(',').map(t=>t.trim()).filter(Boolean).map(t=><span key={t} style={{background:'#faf0d8',color:'#c69425',border:'1px solid #e8d5a0',borderRadius:'10px',fontSize:'11px',padding:'1px 7px',marginRight:'3px'}}>{t}</span>) : '—'}</td>
-                      <td style={td}><Badge value={r.fields[F.props.status]} /></td>
-                      <td style={td}>{r.fields[F.props.acreage]||'—'}</td>
-                      <td style={td}>{r.fields[F.props.sf]?Number(r.fields[F.props.sf]).toLocaleString():'—'}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            </div>
+            <PipelinePage props={filt(props,[F.props.addr,F.props.city,F.props.tags])} onSelectProperty={p => setSelected(s => ({...s, property:p}))} />
           )}
 
           {/* Listings */}
