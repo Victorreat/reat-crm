@@ -1250,6 +1250,11 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
                       {fv(pf,F.props.ownerName) && fv(pf,F.props.entity) && <div style={{ fontSize:'11px', color:'#9ca3af' }}>{fv(pf,F.props.entity)}</div>}
                       {fv(pf,F.props.ownerPhone) && <div style={{ fontSize:'12px', color:'#316828', fontWeight:500 }}>{fv(pf,F.props.ownerPhone)}</div>}
                     </td>
+                    <td style={td}>
+                      {fv(pf,F.props.tags) ? fv(pf,F.props.tags).split(',').map(t => t.trim()).filter(Boolean).map(t => (
+                        <span key={t} style={{ display:'inline-block', background:'#faf0d8', color:'#c69425', border:'1px solid #e8d5a0', borderRadius:'10px', fontSize:'11px', padding:'1px 7px', marginRight:'3px', marginBottom:'2px' }}>{t}</span>
+                      )) : <span style={{ color:'#9ca3af', fontSize:'12px' }}>—</span>}
+                    </td>
                     <td style={td} onClick={e => e.stopPropagation()}>
                       <select style={{ ...inp, padding:'3px 6px', fontSize:'12px', width:'120px' }} value={fv(pf,F.props.status)} onChange={e => updateStatus(p.id, e.target.value)}>
                         {STATUS_ORDER.map(s => <option key={s}>{s}</option>)}
@@ -1265,11 +1270,6 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
                           <div style={{ fontSize:'11px', color:isOverdue?'#dc2626':'#9ca3af' }}>{daysAgo===0?'Today':`${daysAgo}d ago`}</div>
                         </div>
                       ) : <span style={{ color:'#dc2626', fontSize:'12px', fontWeight:600 }}>Never</span>}
-                    </td>
-                    <td style={td} onClick={e => e.stopPropagation()}>
-                      {fv(pf,F.props.tags) ? fv(pf,F.props.tags).split(',').map(t => t.trim()).filter(Boolean).map(t => (
-                        <span key={t} style={{ display:'inline-block', background:'#faf0d8', color:'#c69425', border:'1px solid #e8d5a0', borderRadius:'10px', fontSize:'11px', padding:'1px 7px', marginRight:'3px', marginBottom:'2px' }}>{t}</span>
-                      )) : <span style={{ color:'#9ca3af', fontSize:'12px' }}>—</span>}
                     </td>
                     <td style={td} onClick={e => e.stopPropagation()}>
                       <div style={{ display:'flex', gap:'4px', flexWrap:'wrap' }}>
