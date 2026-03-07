@@ -102,6 +102,7 @@ async function apiCall(method, body) {
 }
 async function apiCreate(table, fields) { return apiCall('POST', { table, fields }) }
 async function apiUpdate(table, id, fields) { return apiCall('PATCH', { table, id, fields }) }
+async function apiDelete(table, id) { return apiCall('DELETE', { table, id }) }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function DetailRow({ label, value }) {
@@ -562,8 +563,16 @@ function ActsTable({ acts }) {
 // ─── Deal Detail ──────────────────────────────────────────────────────────────
 function DealDetail({ deal, allData, onBack, onRefresh }) {
   const [modal, setModal] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const { props, lists, acts, conts } = allData
   const f = deal.fields
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete "${fv(f, F.deals.name)}"? This cannot be undone.`)) return
+    setDeleting(true)
+    try { await apiDelete('deals', deal.id); onBack(); onRefresh() }
+    catch(err) { alert('Delete failed: ' + err.message); setDeleting(false) }
+  }
   const linkedPropRef = linked(f, F.deals.prop)[0]
   const linkedProp = linkedPropRef ? props.find(p => p.id === linkedPropRef.id) : null
   const linkedListRef = linked(f, F.deals.linkedListing)[0]
@@ -580,6 +589,7 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
           <button style={btnSecondary} onClick={() => { setModal('activity') }}>+ Log Activity</button>
           <button style={btnPrimary} onClick={() => setModal('edit')}>Edit Deal</button>
+          <button style={{ ...btnSecondary, color:'#dc2626', borderColor:'#fca5a5' }} onClick={handleDelete} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</button>
         </div>
       </div>
 
@@ -626,19 +636,21 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
           <div style={secTitle}>Commission Payments</div>
           <Badge value={f[F.deals.commStatus] || 'Pending'} />
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+        <div style={{ display:'grid', gridTemplateColumns: (f[F.deals.pay2Date] || f[F.deals.pay2Amt]) ? '1fr 1fr' : '1fr', gap:'12px' }}>
           <div style={{ background:'#faf8f0', borderRadius:'8px', padding:'12px', border:'1px solid #e2dcc8' }}>
             <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', marginBottom:'8px' }}>PAYMENT 1</div>
             <DetailRow label="Expected Date" value={fv(f, F.deals.pay1Date) || '—'} />
             <DetailRow label="Amount" value={f[F.deals.pay1Amt] ? fmt$(f[F.deals.pay1Amt]) : '—'} />
             <DetailRow label="Status" value={f[F.deals.pay1Recd] ? '✓ Received' : 'Pending'} />
           </div>
-          <div style={{ background:'#faf8f0', borderRadius:'8px', padding:'12px', border:'1px solid #e2dcc8' }}>
-            <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', marginBottom:'8px' }}>PAYMENT 2</div>
-            <DetailRow label="Expected Date" value={fv(f, F.deals.pay2Date) || '—'} />
-            <DetailRow label="Amount" value={f[F.deals.pay2Amt] ? fmt$(f[F.deals.pay2Amt]) : '—'} />
-            <DetailRow label="Status" value={f[F.deals.pay2Recd] ? '✓ Received' : 'Pending'} />
-          </div>
+          {(f[F.deals.pay2Date] || f[F.deals.pay2Amt]) && (
+            <div style={{ background:'#faf8f0', borderRadius:'8px', padding:'12px', border:'1px solid #e2dcc8' }}>
+              <div style={{ fontSize:'12px', fontWeight:700, color:'#6b7280', marginBottom:'8px' }}>PAYMENT 2</div>
+              <DetailRow label="Expected Date" value={fv(f, F.deals.pay2Date) || '—'} />
+              <DetailRow label="Amount" value={f[F.deals.pay2Amt] ? fmt$(f[F.deals.pay2Amt]) : '—'} />
+              <DetailRow label="Status" value={f[F.deals.pay2Recd] ? '✓ Received' : 'Pending'} />
+            </div>
+          )}
         </div>
         {(f[F.deals.pay1Recd] || f[F.deals.pay2Recd]) && (
           <div style={{ marginTop:'10px', padding:'10px', background:'#e8f0e9', borderRadius:'6px', display:'flex', gap:'24px' }}>
@@ -672,8 +684,16 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
 // ─── Listing Detail ───────────────────────────────────────────────────────────
 function ListingDetail({ listing, allData, onBack, onRefresh }) {
   const [modal, setModal] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const { props, deals, acts, conts } = allData
   const f = listing.fields
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete "${fv(f, F.lists.name)}"? This cannot be undone.`)) return
+    setDeleting(true)
+    try { await apiDelete('lists', listing.id); onBack(); onRefresh() }
+    catch(err) { alert('Delete failed: ' + err.message); setDeleting(false) }
+  }
   const linkedPropRef = linked(f, F.lists.prop)[0]
   const linkedProp = linkedPropRef ? props.find(p => p.id === linkedPropRef.id) : null
   const listDeals = deals.filter(d => linked(d.fields, F.deals.linkedListing).some(l => l.id === listing.id))
@@ -690,6 +710,7 @@ function ListingDetail({ listing, allData, onBack, onRefresh }) {
           <button style={btnSecondary} onClick={() => setModal('activity')}>+ Log Activity</button>
           <button style={btnSecondary} onClick={() => setModal('deal')}>+ New Deal</button>
           <button style={btnPrimary} onClick={() => setModal('edit')}>Edit Listing</button>
+          <button style={{ ...btnSecondary, color:'#dc2626', borderColor:'#fca5a5' }} onClick={handleDelete} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</button>
         </div>
       </div>
 
@@ -757,8 +778,16 @@ function ListingDetail({ listing, allData, onBack, onRefresh }) {
 // ─── Property Detail ──────────────────────────────────────────────────────────
 function PropertyDetail({ property, allData, onBack, onRefresh }) {
   const [modal, setModal] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const { lists, deals, acts, conts } = allData
   const f = property.fields
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete "${fv(f, F.props.addr)}"? This cannot be undone.`)) return
+    setDeleting(true)
+    try { await apiDelete('props', property.id); onBack(); onRefresh() }
+    catch(err) { alert('Delete failed: ' + err.message); setDeleting(false) }
+  }
   const propListings = lists.filter(l => linked(l.fields, F.lists.prop).some(p => p.id === property.id))
   const propDeals = deals.filter(d => linked(d.fields, F.deals.prop).some(p => p.id === property.id))
   const propActs = acts.filter(a => linked(a.fields, F.acts.linkedProp).some(p => p.id === property.id))
@@ -773,6 +802,7 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
           <button style={btnSecondary} onClick={() => setModal('edit')}>Edit Property</button>
           <button style={btnPrimary} onClick={() => setModal('activity')}>+ Log Activity</button>
+          <button style={{ ...btnSecondary, color:'#dc2626', borderColor:'#fca5a5' }} onClick={handleDelete} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</button>
         </div>
       </div>
 
@@ -840,7 +870,7 @@ function TenantDashboard({ tenant, allData, onBack, onRefresh }) {
 
   const months = []
   const now = new Date()
-  for (let i = 0; i < 12; i++) {
+  for (let i = -3; i < 9; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
     months.push({ label: d.toLocaleString('default', {month:'short', year:'2-digit'}), key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` })
   }
@@ -1726,13 +1756,14 @@ function GTDPage({ acts, onRefresh }) {
           {overdueFU.length > 0 && (
             <div style={{marginBottom:'20px'}}>
               <div style={{fontSize:'12px', fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🔴 Overdue ({overdueFU.length})</div>
-              <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
+              <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
               <tbody>{overdueFU.map(a => (
                 <tr key={a.id} style={{background:'#fff9f9'}}>
                   <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
                   <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
                   <td style={{...td,color:'#dc2626',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)}</td>
                   <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linked(a.fields,F.acts.linkedDeal)[0]?'🤝 Deal':linked(a.fields,F.acts.linkedProp)[0]?'🏠 Property':linked(a.fields,F.acts.linkedListing)[0]?'📋 Listing':'—'}</td>
+                  <td style={td}><button style={{...btnSmall,background:'#e8f0e9',color:'#316828',borderColor:'#316828'}} onClick={async()=>{await apiUpdate('acts',a.id,{'Follow-Up Done':true});onRefresh()}}>✓ Done</button></td>
                 </tr>
               ))}</tbody></table></div>
             </div>
@@ -1740,13 +1771,14 @@ function GTDPage({ acts, onRefresh }) {
           {dueTodayFU.length > 0 && (
             <div style={{marginBottom:'20px'}}>
               <div style={{fontSize:'12px', fontWeight:700, color:'#c69425', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'8px'}}>🟡 Due Today ({dueTodayFU.length})</div>
-              <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th></tr></thead>
+              <div style={card} className="crm-tc"><table style={tbl}><thead><tr><th style={th}>Activity</th><th style={th}>Follow-Up Action</th><th style={th}>Due</th><th style={th}>Linked</th><th style={th}></th></tr></thead>
               <tbody>{dueTodayFU.map(a => (
                 <tr key={a.id}>
                   <td style={td}><div style={{fontWeight:500}}>{fv(a.fields,F.acts.desc)||'—'}</div></td>
                   <td style={{...td,color:'#374151'}}>{fv(a.fields,F.acts.fuAction)||'—'}</td>
                   <td style={{...td,color:'#c69425',fontWeight:600}}>{fv(a.fields,F.acts.fuDate)}</td>
                   <td style={{...td,color:'#6b7280',fontSize:'12px'}}>{linked(a.fields,F.acts.linkedDeal)[0]?'🤝 Deal':linked(a.fields,F.acts.linkedProp)[0]?'🏠 Property':linked(a.fields,F.acts.linkedListing)[0]?'📋 Listing':'—'}</td>
+                  <td style={td}><button style={{...btnSmall,background:'#e8f0e9',color:'#316828',borderColor:'#316828'}} onClick={async()=>{await apiUpdate('acts',a.id,{'Follow-Up Done':true});onRefresh()}}>✓ Done</button></td>
                 </tr>
               ))}</tbody></table></div>
             </div>
@@ -2142,7 +2174,7 @@ export default function CRM() {
           {!detail && view === 'calendar' && (() => {
             const months = []
             const now = new Date()
-            for (let i = 0; i < 18; i++) {
+            for (let i = -3; i < 15; i++) {
               const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
               months.push({ label: d.toLocaleString('default', {month:'short', year:'numeric'}), key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` })
             }

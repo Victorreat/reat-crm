@@ -37,3 +37,17 @@ export async function PATCH(request) {
     return Response.json({ error: detail }, { status: 500 })
   }
 }
+
+export async function DELETE(request) {
+  try {
+    const { table, id } = await request.json()
+    if (!TABLE_IDS[table]) return Response.json({ error: 'Invalid table' }, { status: 400 })
+    console.log('[API DELETE]', table, id)
+    await base(TABLE_IDS[table]).destroy(id)
+    return Response.json({ deleted: true })
+  } catch (err) {
+    const detail = err.error || err.statusCode ? `[${err.statusCode}] ${err.error}: ${err.message}` : err.message
+    console.error('[API DELETE error]', detail, JSON.stringify(err))
+    return Response.json({ error: detail }, { status: 500 })
+  }
+}
