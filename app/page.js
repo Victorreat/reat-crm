@@ -1130,7 +1130,7 @@ function PipelinePage({ props, onSelectProperty }) {
   const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }))
   const SortTh = ({ col, label }) => (
     <th style={{ ...th, cursor:'pointer', userSelect:'none', whiteSpace:'nowrap' }} onClick={() => toggleSort(col)}>
-      {label} <span style={{ color: sort.col === col ? '#316828' : '#d1d5db', fontSize:'10px' }}>{sort.col === col ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+      {label} <span style={{ color: sort.col === col ? '#316828' : '#6b7280', fontSize:'10px' }}>{sort.col === col ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
     </th>
   )
 
@@ -1199,7 +1199,7 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
   const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }))
   const SortTh = ({ col, label, style: extraStyle }) => (
     <th style={{ ...th, ...extraStyle, cursor:'pointer', userSelect:'none', whiteSpace:'nowrap' }} onClick={() => toggleSort(col)}>
-      {label} <span style={{ color: sort.col === col ? '#316828' : '#d1d5db', fontSize:'10px' }}>{sort.col === col ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+      {label} <span style={{ color: sort.col === col ? '#316828' : '#6b7280', fontSize:'10px' }}>{sort.col === col ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
     </th>
   )
 
