@@ -1698,7 +1698,7 @@ export default function CRM() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/data')
+    const res = await fetch('/api/data', { cache: 'no-store' })
     const json = await res.json()
     setData(json)
     setLoading(false)
@@ -1709,7 +1709,7 @@ export default function CRM() {
   const setView2 = (v) => { setView(v); setSearch(''); setSelected({ listing: null, deal: null, property: null, tenant: null }); setSidebarOpen(false) }
   const onRefresh = async () => {
     try {
-      const res = await fetch('/api/data')
+      const res = await fetch('/api/data', { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       if (json.error) throw new Error(json.error)
