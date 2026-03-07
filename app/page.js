@@ -895,7 +895,7 @@ function TenantDashboard({ tenant, allData, onBack, onRefresh }) {
             <div key={m.key} style={{ background: '#fff', border: '1px solid #e2dcc8', borderRadius: '8px', padding: '8px', minHeight: '60px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '4px' }}>{m.label}</div>
               {entries.map((e, i) => (
-                <div key={i} style={{ fontSize: '10px', color: e.received ? '#c69425' : '#316828', background: e.received ? '#fef9c3' : '#e8f0e9', borderRadius: '3px', padding: '2px 4px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                <div key={i} style={{ fontSize: '10px', color: e.received ? '#316828' : '#c69425', background: e.received ? '#e8f0e9' : '#fef9c3', borderRadius: '3px', padding: '2px 4px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   title={`${e.name} — ${e.lbl}: ${fmt$(e.amount)}`}>
                   {e.name} {fmt$(e.amount)}
                 </div>
@@ -1745,7 +1745,7 @@ export default function CRM() {
     { id: 'deals', label: 'Deals', count: deals.length },
     { id: 'contacts', label: 'Contacts', count: conts.length },
     { id: 'activities', label: 'Activity / GTD', count: overdueCount || undefined, countRed: !!overdueCount },
-    { id: 'calendar', label: 'Commission Cal.' },
+    { id: 'calendar', label: 'Commission Calendar' },
   ]
 
   const allData = { props, lists, deals, conts, acts }
@@ -2088,8 +2088,8 @@ export default function CRM() {
             return (
               <div>
                 <div style={{ marginBottom: '16px', display: 'flex', gap: '16px', fontSize: '12px', color: '#6b7280' }}>
-                  <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:10, height:10, borderRadius:'2px', background:'#e8f0e9', border:'1px solid #316828', display:'inline-block' }} /> Pending</span>
-                  <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:10, height:10, borderRadius:'2px', background:'#fef9c3', border:'1px solid #c69425', display:'inline-block' }} /> Received</span>
+                  <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:10, height:10, borderRadius:'2px', background:'#fef9c3', border:'1px solid #c69425', display:'inline-block' }} /> Pending</span>
+                  <span style={{ display:'flex', alignItems:'center', gap:'4px' }}><span style={{ width:10, height:10, borderRadius:'2px', background:'#e8f0e9', border:'1px solid #316828', display:'inline-block' }} /> Received</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: '10px' }}>
                   {months.map(m => {
@@ -2101,7 +2101,7 @@ export default function CRM() {
                         <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>{m.label}</div>
                         {entries.map((e, i) => (
                           <div key={i} onClick={() => { setView('deals'); setSelected(s => ({...s, deal: e.deal})) }}
-                            style={{ fontSize: '10px', color: e.received ? '#c69425' : '#316828', background: e.received ? '#fef9c3' : '#e8f0e9', borderRadius: '3px', padding: '2px 5px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                            style={{ fontSize: '10px', color: e.received ? '#316828' : '#c69425', background: e.received ? '#e8f0e9' : '#fef9c3', borderRadius: '3px', padding: '2px 5px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
                             title={`${e.name} — ${e.lbl}: ${fmt$(e.amount)}`}>
                             {e.name} {fmt$(e.amount)}
                           </div>
