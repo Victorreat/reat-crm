@@ -1142,6 +1142,8 @@ function PipelinePage({ props, onSelectProperty }) {
         case 'addr':   return dir * (fv(a.fields,F.props.addr)||'').localeCompare(fv(b.fields,F.props.addr)||'')
         case 'city':   return dir * (fv(a.fields,F.props.city)||'').localeCompare(fv(b.fields,F.props.city)||'')
         case 'status': return dir * (STATUS_ORDER.indexOf(fv(a.fields,F.props.status)) - STATUS_ORDER.indexOf(fv(b.fields,F.props.status)))
+        case 'attrs':  return dir * ((Array.isArray(a.fields[F.props.attrs]) ? a.fields[F.props.attrs].join(', ') : fv(a.fields,F.props.attrs)||'').localeCompare(Array.isArray(b.fields[F.props.attrs]) ? b.fields[F.props.attrs].join(', ') : fv(b.fields,F.props.attrs)||''))
+        case 'tags':   return dir * (fv(a.fields,F.props.tags)||'').localeCompare(fv(b.fields,F.props.tags)||'')
         case 'acreage':return dir * ((a.fields[F.props.acreage]||0) - (b.fields[F.props.acreage]||0))
         case 'sf':     return dir * ((a.fields[F.props.sf]||0) - (b.fields[F.props.sf]||0))
         default:       return 0
@@ -1162,8 +1164,8 @@ function PipelinePage({ props, onSelectProperty }) {
           <thead><tr>
             <SortTh col="addr" label="Address" />
             <SortTh col="city" label="City" />
-            <th style={th}>Attributes</th>
-            <th style={th}>Prospecting Tags</th>
+            <SortTh col="attrs" label="Attributes" />
+            <SortTh col="tags" label="Prospecting Tags" />
             <SortTh col="status" label="Status" />
             <SortTh col="acreage" label="Acreage" />
             <SortTh col="sf" label="SF" />
@@ -1233,6 +1235,7 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
         case 'addr':        return dir * (fv(a.fields,F.props.addr)||'').localeCompare(fv(b.fields,F.props.addr)||'')
         case 'owner':       return dir * (fv(a.fields,F.props.ownerName)||'').localeCompare(fv(b.fields,F.props.ownerName)||'')
         case 'status':      return dir * (STATUS_ORDER.indexOf(fv(a.fields,F.props.status)) - STATUS_ORDER.indexOf(fv(b.fields,F.props.status)))
+        case 'tags':        return dir * (fv(a.fields,F.props.tags)||'').localeCompare(fv(b.fields,F.props.tags)||'')
         case 'attempts':    return dir * ((a.fields[F.props.attempts]||0) - (b.fields[F.props.attempts]||0))
         case 'lastOutreach':{
           const aLo = a.fields[F.props.lastOutreach] || ''
@@ -1313,7 +1316,7 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
             <tr>
               <SortTh col="addr" label="Property" />
               <SortTh col="owner" label="Owner / Entity" />
-              <th style={th}>Prospecting Tags</th>
+              <SortTh col="tags" label="Prospecting Tags" />
               <SortTh col="status" label="Status" />
               <SortTh col="attempts" label="Attempts" />
               <SortTh col="lastOutreach" label="Last Outreach" />
