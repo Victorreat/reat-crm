@@ -36,6 +36,9 @@ const F = {
     commStatus:'Commission Status',
     pay1Date:'Expected Payment 1 Date', pay1Amt:'Payment 1 Amount', pay1Recd:'Payment 1 Received',
     pay2Date:'Expected Payment 2 Date', pay2Amt:'Payment 2 Amount', pay2Recd:'Payment 2 Received',
+    leaseTerm:'Lease Term', leaseSF:'Lease SF', leasePSF:'Lease PSF',
+    commTerm:'Commission Term', annualBaseRent:'Annual Base Rent',
+    incTypeFld:'Increase Type', incAmtFld:'Increase Amount', incIntFld:'Increase Interval',
   },
   conts: {
     firstName:'First Name', lastName:'Last Name', company:'Company', title:'Title',
@@ -207,31 +210,40 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
   const [notes, setNotes] = useState(g(F.deals.notes) || '')
   const [propId, setPropId] = useState(existingPropId || (typeof prefillPropId === 'string' ? prefillPropId : null))
   const [listId, setListId] = useState(existingListId || (typeof prefillListId === 'string' ? prefillListId : null))
-  const [psf, setPsf] = useState('')
-  const [sf, setSf] = useState('')
-  const [term, setTerm] = useState('')
-  const [annualRent, setAnnualRent] = useState(editing ? (g(F.deals.value) || '') : '')
-  const [purchase, setPurchase] = useState('')
-  const [incType, setIncType] = useState('')
-  const [incAmt, setIncAmt] = useState('')
-  const [incInt, setIncInt] = useState('')
+  const [psf, setPsf] = useState(g(F.deals.leasePSF) || '')
+  const [sf, setSf] = useState(g(F.deals.leaseSF) || '')
+  const [term, setTerm] = useState(g(F.deals.leaseTerm) || '')
+  const [annualRent, setAnnualRent] = useState(g(F.deals.annualBaseRent) || '')
+  const [purchase, setPurchase] = useState(editing && structure === 'Purchase' ? (g(F.deals.value) || '') : '')
+  const [incType, setIncType] = useState(g(F.deals.incTypeFld) || '')
+  const [incAmt, setIncAmt] = useState(g(F.deals.incAmtFld) || '')
+  const [incInt, setIncInt] = useState(g(F.deals.incIntFld) || '')
   const [pay1Date, setPay1Date] = useState(g(F.deals.pay1Date))
   const [pay1Amt, setPay1Amt] = useState(g(F.deals.pay1Amt) || '')
   const [pay1Recd, setPay1Recd] = useState(!!g(F.deals.pay1Recd))
   const [pay2Date, setPay2Date] = useState(g(F.deals.pay2Date))
   const [pay2Amt, setPay2Amt] = useState(g(F.deals.pay2Amt) || '')
   const [pay2Recd, setPay2Recd] = useState(!!g(F.deals.pay2Recd))
+  const [commYrs, setCommYrs] = useState(g(F.deals.commTerm) || '')
   const [saving, setSaving] = useState(false)
 
   const annualBase = parseFloat(psf) * parseFloat(sf) || 0
   const termN = parseInt(term) || 0
   const commRateN = parseFloat(commRate) || 0
+  const commYrsN = parseInt(commYrs) || 0
   let dealValue = 0
   if (structure === 'Lease') dealValue = calcTotalRent(annualBase, termN, incType, parseFloat(incAmt)||0, parseInt(incInt)||0)
   else if (structure === 'Ground Lease') dealValue = calcTotalRent(parseFloat(annualRent)||0, termN, incType, parseFloat(incAmt)||0, parseInt(incInt)||0)
   else if (structure === 'Purchase') dealValue = parseFloat(purchase) || 0
   if (editing && !dealValue) dealValue = g(F.deals.value) || 0
-  const estComm = commRateN && dealValue ? dealValue * commRateN / 100 : 0
+  // leaseInputsPresent = user has filled in enough to recalculate
+  const leaseInputsPresent = (structure === 'Lease' && annualBase > 0 && termN > 0) ||
+    (structure === 'Ground Lease' && parseFloat(annualRent) > 0 && termN > 0) ||
+    (structure === 'Purchase' && parseFloat(purchase) > 0)
+  // Commission base: partial term if commYrs set, otherwise full deal value
+  const annualBaseForComm = structure === 'Lease' ? annualBase : (parseFloat(annualRent) || 0)
+  const commBase = commYrsN && annualBaseForComm ? annualBaseForComm * commYrsN : dealValue
+  const estComm = commRateN && commBase ? commBase * commRateN / 100 : 0
 
   const handleSave = async () => {
     if (!name) return alert('Deal name required')
@@ -246,6 +258,14 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
       'Deal Value': dealValue > 0 ? dealValue : undefined,
       'Commission Rate': commRateN > 0 ? commRateN / 100 : undefined,
       'Est. Commission': estComm > 0 ? estComm : undefined,
+      'Lease Term': termN > 0 ? termN : undefined,
+      'Lease SF': parseFloat(sf) > 0 ? parseFloat(sf) : undefined,
+      'Lease PSF': parseFloat(psf) > 0 ? parseFloat(psf) : undefined,
+      'Commission Term': commYrsN > 0 ? commYrsN : undefined,
+      'Annual Base Rent': parseFloat(annualRent) > 0 ? parseFloat(annualRent) : undefined,
+      'Increase Type': incType || undefined,
+      'Increase Amount': parseFloat(incAmt) > 0 ? parseFloat(incAmt) : undefined,
+      'Increase Interval': parseInt(incInt) > 0 ? parseInt(incInt) : undefined,
       'Referral Fee': referralFee ? parseFloat(referralFee) : undefined,
       'Projected Close Date': closeDate || undefined,
       'Commission Agreement Executed': ca,
@@ -296,8 +316,9 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
       {structure === 'Lease' && (
         <div style={{ background: '#faf8f0', border: '1px solid #e2dcc8', borderRadius: '8px', padding: '12px', marginBottom: '10px' }}>
           <div style={secTitle}>Lease Terms</div>
-          <div style={row2}>
+          <div style={row3}>
             <div style={fgrp}><label style={flbl}>Term (Yrs)</label><input style={inp} type="number" value={term} onChange={e=>setTerm(e.target.value)} /></div>
+            <div style={fgrp}><label style={flbl}>Comm. Yrs <span style={{fontWeight:400,color:'#9ca3af'}}>(if &lt; full term)</span></label><input style={inp} type="number" value={commYrs} onChange={e=>setCommYrs(e.target.value)} placeholder={term || 'full'} /></div>
             <div style={fgrp}><label style={flbl}>Building SF</label><input style={inp} type="number" value={sf} onChange={e=>setSf(e.target.value)} /></div>
           </div>
           <div style={fgrp}><label style={flbl}>Base Rent PSF/yr</label><input style={inp} type="number" step="0.01" value={psf} onChange={e=>setPsf(e.target.value)} /></div>
@@ -306,15 +327,21 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
             <div style={fgrp}><label style={flbl}>Amount</label><input style={inp} type="number" step="0.01" value={incAmt} onChange={e=>setIncAmt(e.target.value)} /></div>
             <div style={fgrp}><label style={flbl}>Every N Yrs</label><input style={inp} type="number" value={incInt} onChange={e=>setIncInt(e.target.value)} /></div>
           </div>
-          {dealValue > 0 && <div style={{ fontSize: '12px', color: '#316828', background: '#e8f0e9', borderRadius: '6px', padding: '7px 10px' }}>Annual: <strong>{fmt$(annualBase)}</strong> · Total Value: <strong>{fmt$(dealValue)}</strong></div>}
+          {leaseInputsPresent && (
+            <div style={{ fontSize: '12px', color: '#316828', background: '#e8f0e9', borderRadius: '6px', padding: '7px 10px' }}>
+              Annual: <strong>{fmt$(annualBase)}</strong> · Full Term Value ({term} yr): <strong>{fmt$(dealValue)}</strong>
+              {commYrsN > 0 && <> · Comm. basis ({commYrs} yr): <strong>{fmt$(annualBase * commYrsN)}</strong></>}
+            </div>
+          )}
         </div>
       )}
 
       {structure === 'Ground Lease' && (
         <div style={{ background: '#faf8f0', border: '1px solid #e2dcc8', borderRadius: '8px', padding: '12px', marginBottom: '10px' }}>
           <div style={secTitle}>Ground Lease Terms</div>
-          <div style={row2}>
+          <div style={row3}>
             <div style={fgrp}><label style={flbl}>Term (Yrs)</label><input style={inp} type="number" value={term} onChange={e=>setTerm(e.target.value)} /></div>
+            <div style={fgrp}><label style={flbl}>Comm. Yrs <span style={{fontWeight:400,color:'#9ca3af'}}>(if &lt; full term)</span></label><input style={inp} type="number" value={commYrs} onChange={e=>setCommYrs(e.target.value)} placeholder={term || 'full'} /></div>
             <div style={fgrp}><label style={flbl}>Annual Base Rent $</label><input style={inp} type="number" value={annualRent} onChange={e=>setAnnualRent(e.target.value)} /></div>
           </div>
           <div style={row3}>
@@ -322,7 +349,12 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
             <div style={fgrp}><label style={flbl}>Amount</label><input style={inp} type="number" step="0.01" value={incAmt} onChange={e=>setIncAmt(e.target.value)} /></div>
             <div style={fgrp}><label style={flbl}>Every N Yrs</label><input style={inp} type="number" value={incInt} onChange={e=>setIncInt(e.target.value)} /></div>
           </div>
-          {dealValue > 0 && <div style={{ fontSize: '12px', color: '#316828', background: '#e8f0e9', borderRadius: '6px', padding: '7px 10px' }}>Total Ground Lease Value ({term} yr): <strong>{fmt$(dealValue)}</strong></div>}
+          {leaseInputsPresent && (
+            <div style={{ fontSize: '12px', color: '#316828', background: '#e8f0e9', borderRadius: '6px', padding: '7px 10px' }}>
+              Annual: <strong>{fmt$(parseFloat(annualRent)||0)}</strong> · Full Term Value ({term} yr): <strong>{fmt$(dealValue)}</strong>
+              {commYrsN > 0 && <> · Comm. basis ({commYrs} yr): <strong>{fmt$((parseFloat(annualRent)||0) * commYrsN)}</strong></>}
+            </div>
+          )}
         </div>
       )}
 
@@ -334,7 +366,19 @@ function DealForm({ data, props, lists, onSave, onCancel, prefillListId, prefill
         <div style={fgrp}><label style={flbl}>Commission Rate %</label><input style={inp} type="number" step="0.01" value={commRate} onChange={e=>setCommRate(e.target.value)} /></div>
         <div style={fgrp}><label style={flbl}>Projected Close Date</label><input style={inp} type="date" value={closeDate} onChange={e=>setCloseDate(e.target.value)} /></div>
       </div>
-      {estComm > 0 && <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:"8px", padding:"10px 14px", marginBottom:"10px" }}><span style={{ fontSize: '12px', color: '#316828', fontWeight: 500 }}>Est. Commission</span><span style={{ fontSize: '18px', fontWeight: 700, color: '#316828' }}>{fmt$(estComm)}</span></div>}
+      {estComm > 0 && (
+        <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:"8px", padding:"10px 14px", marginBottom:"10px", display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div style={{ fontSize: '12px', color: '#316828', fontWeight: 500 }}>
+              Est. Commission{commYrsN > 0 ? ` — ${commYrs}-yr basis` : ''}
+            </div>
+            {commYrsN > 0 && dealValue > 0 && leaseInputsPresent && (
+              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Full term deal value (for metrics): {fmt$(dealValue)}</div>
+            )}
+          </div>
+          <span style={{ fontSize: '18px', fontWeight: 700, color: '#316828' }}>{fmt$(estComm)}</span>
+        </div>
+      )}
       <div style={row2}>
         <div style={fgrp}><label style={flbl}>Buyer / Tenant</label><input style={inp} value={buyerTenant} onChange={e=>setBuyerTenant(e.target.value)} /></div>
         <div style={fgrp}><label style={flbl}>Counterpart Contact</label><input style={inp} value={counterpart} onChange={e=>setCounterpart(e.target.value)} /></div>
@@ -609,6 +653,17 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
           <DetailRow label="CA Executed" value={f[F.deals.ca] ? '✓ Yes' : 'No'} />
           <DetailRow label="Client Entity" value={fv(f, F.deals.clientEntity)} />
           <DetailRow label="Counterpart" value={fv(f, F.deals.counterpart)} />
+          {(f[F.deals.leaseTerm] || f[F.deals.leaseSF] || f[F.deals.leasePSF] || f[F.deals.annualBaseRent] || f[F.deals.commTerm]) && (
+            <>
+              <div style={{ marginTop: '10px', marginBottom: '4px', ...secTitle }}>{fv(f, F.deals.structure) === 'Ground Lease' ? 'Ground Lease Terms' : 'Lease Terms'}</div>
+              {f[F.deals.leaseTerm] && <DetailRow label="Term" value={`${f[F.deals.leaseTerm]} yrs`} />}
+              {f[F.deals.leaseSF] && <DetailRow label="Building SF" value={Number(f[F.deals.leaseSF]).toLocaleString()} />}
+              {f[F.deals.leasePSF] && <DetailRow label="Base Rent PSF/yr" value={`$${f[F.deals.leasePSF]}`} />}
+              {f[F.deals.annualBaseRent] && <DetailRow label="Annual Base Rent" value={fmt$(f[F.deals.annualBaseRent])} />}
+              {f[F.deals.incTypeFld] && <DetailRow label="Escalations" value={`${f[F.deals.incTypeFld]} ${f[F.deals.incAmtFld] || ''} every ${f[F.deals.incIntFld] || '?'} yr`} />}
+              {f[F.deals.commTerm] && <DetailRow label="Commission Term" value={`${f[F.deals.commTerm]} yrs`} />}
+            </>
+          )}
           {f[F.deals.notes] && <div style={{ marginTop: '10px' }}><div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500, marginBottom: '4px' }}>Notes</div><div style={{ fontSize: '13px', whiteSpace: 'pre-wrap' }}>{f[F.deals.notes]}</div></div>}
         </div>
         <div style={{ ...card, padding: '16px', marginBottom: 0 }}>
@@ -634,7 +689,7 @@ function DealDetail({ deal, allData, onBack, onRefresh }) {
       <div style={{ ...card, padding: '16px', marginBottom: '16px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
           <div style={secTitle}>Commission Payments</div>
-          <Badge value={f[F.deals.commStatus] || 'Pending'} />
+          {(f[F.deals.pay1Date] || f[F.deals.pay1Amt]) && <Badge value={f[F.deals.commStatus] || 'Pending'} />}
         </div>
         <div style={{ display:'grid', gridTemplateColumns: (f[F.deals.pay2Date] || f[F.deals.pay2Amt]) ? '1fr 1fr' : '1fr', gap:'12px' }}>
           <div style={{ background:'#faf8f0', borderRadius:'8px', padding:'12px', border:'1px solid #e2dcc8' }}>
@@ -801,6 +856,7 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
         <Badge value={f[F.props.status]} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
           <button style={btnSecondary} onClick={() => setModal('edit')}>Edit Property</button>
+          <button style={btnSecondary} onClick={() => setModal('deal')}>+ New Deal</button>
           <button style={btnPrimary} onClick={() => setModal('activity')}>+ Log Activity</button>
           <button style={{ ...btnSecondary, color:'#dc2626', borderColor:'#fca5a5' }} onClick={handleDelete} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</button>
         </div>
@@ -852,6 +908,7 @@ function PropertyDetail({ property, allData, onBack, onRefresh }) {
 
       {modal === 'activity' && <Modal title="Log Activity" onClose={() => setModal(null)}><ActivityForm props={allData.props} deals={allData.deals} lists={allData.lists} prefillPropId={property.id} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
       {modal === 'edit' && <Modal title="Edit Property" onClose={() => setModal(null)}><PropertyForm data={property} allProps={allData.props} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
+      {modal === 'deal' && <Modal title="New Deal" onClose={() => setModal(null)} wide><DealForm props={allData.props} lists={allData.lists} prefillPropId={property.id} onSave={() => { setModal(null); onRefresh() }} onCancel={() => setModal(null)} /></Modal>}
     </div>
   )
 }
@@ -1300,6 +1357,10 @@ function ProspectingPage({ allData, onRefresh, onSelectProperty }) {
   }
 
   const updateStatus = async (propId, newStatus) => {
+    if (newStatus === 'Dead') {
+      const prop = props.find(p => p.id === propId)
+      if (!window.confirm(`Mark "${fv(prop?.fields, F.props.addr)}" as Dead? It will be removed from the active call sheet.`)) return
+    }
     try { await apiUpdate('props', propId, { 'Prospecting Status': newStatus }); onRefresh() }
     catch(err) { alert('Error: ' + err.message) }
   }
@@ -1532,7 +1593,8 @@ function GTDPage({ acts, onRefresh }) {
       const fields = { 'Status': status }
       if (nextAction) fields['Next Action'] = nextAction
       await apiUpdate('acts', id, fields)
-      setClarifyIdx(0)
+      // Keep index — inbox shrinks by 1 so current idx naturally points to next item
+      // (clamp in render so we don't go out of bounds)
       await onRefresh()
     } catch(e) { alert('Error: ' + e.message) }
     setUpdating(null)
@@ -1622,6 +1684,11 @@ function GTDPage({ acts, onRefresh }) {
               <button style={{...btnPrimary, opacity: captureSaving ? 0.6 : 1}} onClick={handleCapture} disabled={captureSaving}>
                 {captureSaving ? 'Saving...' : '⚡ Capture (⌘↵)'}
               </button>
+              {inbox.length > 0 && (
+                <button style={{...btnSecondary, fontSize:'12px', color:'#316828', borderColor:'#316828'}} onClick={() => setActTab('clarify')}>
+                  → Clarify Inbox ({inbox.length})
+                </button>
+              )}
               <span style={{fontSize:'11px', color:'#9ca3af'}}>Inbox: {inbox.length} items to process</span>
             </div>
           </div>
@@ -1638,13 +1705,20 @@ function GTDPage({ acts, onRefresh }) {
             </div>
           ) : (
             <div>
-              <div style={{fontSize:'12px', color:'#6b7280', marginBottom:'12px'}}>{inbox.length} items to process · Showing {clarifyIdx + 1} of {inbox.length}</div>
               {(() => {
-                const item = inbox[clarifyIdx]
+                const safeIdx = Math.min(clarifyIdx, inbox.length - 1)
+                const item = inbox[safeIdx]
                 if (!item) return null
                 const text = fv(item.fields, F.acts.capture) || fv(item.fields, F.acts.desc)
                 return (
                   <div style={{...card, padding:'20px'}}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px'}}>
+                      <span style={{fontSize:'12px', color:'#6b7280'}}>{inbox.length} items to process · {safeIdx + 1} of {inbox.length}</span>
+                      <div style={{display:'flex', gap:'6px'}}>
+                        <button style={btnSmall} disabled={safeIdx === 0} onClick={() => setClarifyIdx(i => Math.max(0, i - 1))}>← Prev</button>
+                        <button style={btnSmall} disabled={safeIdx >= inbox.length - 1} onClick={() => setClarifyIdx(i => Math.min(inbox.length - 1, i + 1))}>Next →</button>
+                      </div>
+                    </div>
                     <div style={{fontSize:'16px', fontWeight:600, marginBottom:'6px', lineHeight:1.4}}>{text}</div>
                     <div style={{fontSize:'12px', color:'#9ca3af', marginBottom:'20px'}}>{fv(item.fields, F.acts.date)}</div>
                     <div style={{fontSize:'11px', fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'10px'}}>Is it actionable?</div>
@@ -1853,6 +1927,11 @@ export default function CRM() {
   const { props, lists, deals, conts, acts } = data
   const q = search.toLowerCase()
   const filt = (recs, fields) => q ? recs.filter(r => fields.some(f => (fv(r.fields, f)||'').toLowerCase().includes(q))) : recs
+  // Like filt but also searches across linked record values via resolver functions
+  const filtLinked = (recs, fields, resolvers) => q ? recs.filter(r =>
+    fields.some(f => (fv(r.fields, f)||'').toLowerCase().includes(q)) ||
+    (resolvers||[]).some(fn => (fn(r)||'').toLowerCase().includes(q))
+  ) : recs
 
   // Stats
   const commReceived = d => (d.fields[F.deals.pay1Recd] ? (d.fields[F.deals.pay1Amt]||0) : 0) + (d.fields[F.deals.pay2Recd] ? (d.fields[F.deals.pay2Amt]||0) : 0)
@@ -2130,8 +2209,11 @@ export default function CRM() {
             <div>
               <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>All Deals</div>
               {(() => {
-                const groups = [...tenants.map(t => ({ key: t, label: t, deals: deals.filter(d => fv(d.fields, F.deals.clientName) === t) })),
-                  { key: '__other__', label: 'Listings', deals: deals.filter(d => !fv(d.fields, F.deals.clientName)) }
+                const filteredDeals = filtLinked(deals, [F.deals.name, F.deals.clientName, F.deals.buyerTenant], [
+                  d => { const id = linked(d.fields, F.deals.prop)[0]?.id; return id ? fv(props.find(p=>p.id===id)?.fields, F.props.addr) : '' }
+                ])
+                const groups = [...tenants.map(t => ({ key: t, label: t, deals: filteredDeals.filter(d => fv(d.fields, F.deals.clientName) === t) })),
+                  { key: '__other__', label: 'Listings', deals: filteredDeals.filter(d => !fv(d.fields, F.deals.clientName)) }
                 ].filter(g => g.deals.length > 0)
                 return groups.map(({ key, label, deals: tDeals }) => {
                 const tActive = tDeals.filter(d => !['Executed','Dead'].includes(fv(d.fields, F.deals.stage)))
@@ -2161,7 +2243,10 @@ export default function CRM() {
             <div style={card}>
               <table style={tbl}>
                 <thead><tr><th style={th}>Name</th><th style={th}>Company</th><th style={th}>Role</th><th style={th}>Phone</th><th style={th}>Email</th></tr></thead>
-                <tbody>{filt(conts,[F.conts.firstName,F.conts.lastName,F.conts.company]).map(c => <tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)||'—'}</div></td><td style={td}>{fv(c.fields,F.conts.company)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)||'—'}</td><td style={td}>{fv(c.fields,F.conts.phone)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)||'—'}</td></tr>)}</tbody>
+                <tbody>{filtLinked(conts,[F.conts.firstName,F.conts.lastName,F.conts.company,F.conts.role],[
+                    c => { const id = linked(c.fields,F.conts.linkedProp)[0]?.id; return id ? fv(props.find(p=>p.id===id)?.fields,F.props.addr) : '' },
+                    c => { const id = linked(c.fields,F.conts.linkedDeal)[0]?.id; return id ? fv(deals.find(d=>d.id===id)?.fields,F.deals.name) : '' },
+                  ]).map(c => <tr key={c.id}><td style={td}><div style={{fontWeight:500}}>{contName(c.fields)||'—'}</div></td><td style={td}>{fv(c.fields,F.conts.company)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.role)||'—'}</td><td style={td}>{fv(c.fields,F.conts.phone)||'—'}</td><td style={{...td,color:'#6b7280'}}>{fv(c.fields,F.conts.email)||'—'}</td></tr>)}</tbody>
               </table>
             </div>
           )}
