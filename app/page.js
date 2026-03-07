@@ -1817,7 +1817,9 @@ export default function CRM() {
           {!detail && view === 'dashboard' && (() => {
             const now = new Date()
             const activeDeals = deals.filter(d => !['Executed','Dead'].includes(fv(d.fields,F.deals.stage)))
-            
+            // Pipeline by close date includes Executed (under contract) deals — just not Dead
+            const pipelineDeals = deals.filter(d => fv(d.fields,F.deals.stage) !== 'Dead')
+
             // Close date buckets
             const bucket = (d) => {
               const cd = fv(d.fields, F.deals.closeDate)
@@ -1832,7 +1834,7 @@ export default function CRM() {
               return '180+'
             }
             const buckets = { 'overdue':[], '0-30':[], '31-60':[], '61-90':[], '91-120':[], '121-180':[], '180+':[], 'unscheduled':[] }
-            activeDeals.forEach(d => buckets[bucket(d)].push(d))
+            pipelineDeals.forEach(d => buckets[bucket(d)].push(d))
             
             const BUCKET_LABELS = [
               { key:'overdue', label:'Overdue', color:'#dc2626', bg:'#fee2e2' },
